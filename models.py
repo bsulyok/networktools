@@ -2,6 +2,7 @@ import numpy as np
 import warnings
 from itertools import combinations
 import random
+from utils import degree, unique_sample
 
 def ER(N, p=None, L=None, output='matrix'):
 
@@ -25,7 +26,6 @@ def ER(N, p=None, L=None, output='matrix'):
         Adjacency matrix indicating edges between vertices.
     adjacency_list : list of lists
         Adjacency list containing edge indices in a concise form.
-
     '''
 
     if N < 2:
@@ -97,8 +97,8 @@ def regular_ring_lattice(N, k=2, output='matrix'):
 
     if N < 3:
         raise TypeError('This model requires at least three vertices.')
-    if type(k) is not int or k%2 != 0 or k < 2:
-        raise TypeError('Coordination number "k" must be a positive even integer!')
+    if type(k) is not int or k%2 == 1 or k < 2 or N-2 < k:
+        raise TypeError('Coordination number must be a positive even integer smaller than N-2!')
     if N-1 < k:
         raise TypeError('Coordination number "k" is too high.')
     if output not in ['matrix', 'list']:
@@ -208,3 +208,65 @@ def SBM(z=None, s=None, P=None, output='matrix'):
                     adjacency[j].append(i)
         return adjacency, z
 
+def BA(N, m, output='matrix'):
+
+    '''
+    Create a Barabasi-Albert random graph.
+    Parameters
+    ----------
+    N : int
+        Number of vertices. Must be larger than one.
+    m : int
+        Number of edges brought in by new vertices.
+    output : str
+        The kind of the generated network. It can be:
+        * "matrix": create an adjacency matrix of the network.
+        * "list": create an adjacency list of the network.
+    Returns
+    -------
+    adjacency_matrix : ndarray
+        Adjacency matrix indicating edges between vertices.
+    adjacency_list : list of lists
+        Adjacency list containing edge indices in a concise form.
+    '''
+
+    if type(N) is not int or N < 8:
+        raise TypeError('N must be an integer larger than 8')
+    if type(m) is not int or m < 1 or N < 2*m:
+        raise TypeError('m must be a positive integer not larger than N/2')
+    if output not int ['matrix', 'list']
+        raise TypeError('Wrong output format requested!')
+
+
+    clique = 2*m
+
+    if output == 'matrix':
+        adjacency = np.zeros((N,N), dtype=bool)
+        adjacency[:clique, :clique] = ER(clique, L=clique**2 / 4)
+        stubs = adjacency.sum(1)
+        stubs[:clique] += 1
+        stub_sum = sum(stubs)
+        for new_vertex in range(clique, N):
+            old_vertices = np.random.choice(new_vertex, size=m, replace=False, p=stubs[:new_vertex]/stub_sum)
+            adjacency[old_vertices, new_vertex] = True
+            adjacency[new_vertex][old_vertices] = True
+            stubs[old_vertices] += 1
+            stubs[new_vertex] += m
+            stub_sum += 2*m
+        return adjacency
+
+    elif output == 'list':
+        adjacency = ER(clique, clique**2 / 4, output='list')
+        stubs = np.concatenate(([len(i) for i in adjacency], np.zeros(N-clique)))
+        stubs[:clique] += 1
+        stubs = np.concatenate((np.ones(clique), np.zeros(N-clique)))
+        stub_sum = sum(stubs)
+        for new_vertex in range(clique, N):
+            old_vertices = np.random.choice(new_vertex, size=m, replace=False, p=stubs[:new_vertex]/stub_sum)
+            for old_vertex in old_vertices:
+                adjacency[old_vertex].append(new_vertex)
+            adjacency.append(list(old_vertices))
+            stubs[old_vertices] += 1
+            stubs[new_vertex] += m
+            stub_sum += 2*m
+        return adjacency

@@ -4,8 +4,7 @@ All functions implemented for Adjacency matrix (numpy.ndarray) and Adjacency lis
 I may include implementations for Adjacency matrix (pytorch.tensor) and/or Edge list (set of sets) if I see it useful.
 
 # External python packages used:
-`numpy`
-`plotly`
+`numpy`, `plotly`
 
 # Notes
 Heavy use of expressions with list comprehension.

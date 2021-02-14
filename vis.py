@@ -13,13 +13,13 @@ def semi_circle(x1, x2):
     y_coords = abs(x2-x1)/2 * np.sin(angle)
     return x_coords, y_coords
 
-def arcs(adjacency):
+def arcs(adjacency, z=None):
     fig = go.Figure()
     N = len(adjacency)
     x_coords = np.linspace(0,1,N)
     for i, j in edge_list(adjacency):
         sc = semi_circle(x_coords[i], x_coords[j])
-        fig.add_trace(go.Scatter(
+        fig.add_trace(go.Scattergl(
             x=sc[0],
             y=sc[1],
             mode='lines',
@@ -28,17 +28,18 @@ def arcs(adjacency):
             showlegend=False
         ))
 
-    fig.add_trace(go.Scatter(
+    fig.add_trace(go.Scattergl(
         x=x_coords,
         y=np.zeros(N),
         mode='markers',
-        marker_size=20,
-        marker_color='blue',
+        marker_size=10,
+        marker_color='blue' if z is None else z,
         showlegend=False
     ))
 
     fig.update_xaxes(tickvals=[], zeroline=False)
-    fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x', scaleratio=1)
+    fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
+    fig.update_layout(height=HEIGHT, width=HEIGHT-20)
     fig.show()
     return
 
@@ -69,7 +70,7 @@ def radial_semi_circle(a1, a2):
     p3 = np.array([np.sin(a2), np.cos(a2)])
     return quadratic_bezier_curve(p1, p2, p3).T
 
-def radial(adjacency):
+def radial(adjacency, z=None):
     fig = go.Figure()
     N = len(adjacency)
     angle = np.linspace(0,2*np.pi,N+1)[1:]
@@ -89,13 +90,14 @@ def radial(adjacency):
         x=np.sin(angle),
         y=np.cos(angle),
         mode='markers',
-        marker_size=20,
-        marker_color='blue',
+        marker_size=10,
+        marker_color='blue' if z is None else z,
         showlegend=False
     ))
 
     fig.update_xaxes(tickvals=[], zeroline=False)
-    fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x', scaleratio=1)
+    fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
+    fig.update_layout(height=HEIGHT, width=HEIGHT-20)
     fig.show()
     return
 

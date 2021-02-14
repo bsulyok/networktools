@@ -4,6 +4,12 @@ import random
 from simulationtools import annealing
 from copy import deepcopy
 
+def unique_sample(seq, size):
+    samples = {}
+    while len(samples) < size:
+        samples.add(RNG.choice(seq))
+    return samples
+
 def mat2list(adjacency_matrix):
     '''
     Produce the adjacency list of the given adjacency matrix.
@@ -37,17 +43,15 @@ def degree(adjacency):
     Compute the edge degree of each vertex.
     '''
     if islist(adjacency):
-        return [len(v) for v in adjacency]
+        return np.array([len(v) for v in adjacency])
     elif ismat(adjacency):
         return adjacency.sum(0)
-    else:
-        return 'Wrong input!'
 
 def edge_number(adjacency):
     '''
     Compute the total number of edges.
     '''
-    return sum(degree(adjacency))/2
+    return sum(degree(adjacency))//2
 
 def edge_list(adjacency):
     '''
@@ -60,13 +64,35 @@ def edge_list(adjacency):
     else:
         return 'Wrong input!'
 
-def sort_by_degree(adjacency):
-    d = degree(adjacency)
-    if islist(d):
+def group_sort(adjacency, z, order='index'):
+    '''
+    Arrange vertices into groups. Order can be "index", "size".
+    '''
+    N = len(adjacency)
+    if islist(adjacency):
         pass #TODO
-    elif ismat(d):
-        iperm = np.arange(len(d))[d.argsort()][::-1]
-        return rearrange(adjacency, inverse_permutation(iperm))
+    elif ismat(adjacency):
+        if order == 'index':
+            iperm = np.arange(N)[z.argsort()]
+        elif order == 'size':
+            u, f = np.unique(z, return_counts=True)
+            nz = inverse_permutation(u[f.argsort()][::-1])[z]
+            iperm = np.arange(N)[nz.argsort()]
+        perm = inverse_permutation(iperm)
+        return rearrange(adjacency, perm), z[iperm]
+
+
+def degree_sort(adjacency, descending=True):
+    '''
+    Sort vertices by their degree. Descending order by default.
+    '''
+    N = len(adjacency)
+    d = np.array(degree(adjacency))
+    if descending:
+        iperm = np.arange(N)[d.argsort()][::-1]
+    else:
+        iperm = np.arange(N)[d.argsort()]
+    return rearrange(adjacency, inverse_permutation(iperm))
 
 def inverse_permutation(perm):
     if islist(perm):
