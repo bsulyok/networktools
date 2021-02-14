@@ -3,7 +3,7 @@ import warnings
 from itertools import combinations
 import random
 
-def erdos_renyi_random_graph(N, p=None, L=None, output='matrix'):
+def ER(N, p=None, L=None, output='matrix'):
 
     '''
     Create an Erdos-Renyi random graph.
@@ -80,6 +80,7 @@ def erdos_renyi_random_graph(N, p=None, L=None, output='matrix'):
     return
 
 def regular_ring_lattice(N, k=2, output='matrix'):
+
     '''
     Create a regular ring lattice.
     Parameters
@@ -93,6 +94,7 @@ def regular_ring_lattice(N, k=2, output='matrix'):
         * "matrix" (default): create an adjacency matrix of the network.
         * "list": create an adjacency list of the network.
     '''
+
     if N < 3:
         raise TypeError('This model requires at least three vertices.')
     if type(k) is not int or k%2 != 0 or k < 2:
@@ -102,24 +104,23 @@ def regular_ring_lattice(N, k=2, output='matrix'):
     if output not in ['matrix', 'list']:
         raise TypeError('Wrong output format!')
 
-
     if output == 'matrix':
-        adjacency_matrix = np.zeros((N,N), dtype=bool)
+        adjacency = np.zeros((N,N), dtype=bool)
         r = np.arange(N)
+        #z = (r[:,None] - np.arange(1,k//2+1)) % N
         for offset in range(1, k//2+1):
-            adjacency_matrix[r, r-offset] = True
-            adjacency_matrix[r-offset, r] = True
-        return adjacency_matrix
+            adjacency[r, (r+offset)%N] = True
+        return adjacency | adjacency.T
 
     elif output == 'list':
         adjacency_list = []
         for i in range(N):
-            adjacency_list.append({(i+offset)%N for offset in range(-k//2, k//2+1) if offset !=0})
+            adjacency_list.append([(i+offset)%N for offset in range(-k//2, k//2+1) if offset !=0])
         return adjacency_list
     print('Something went wrong!')
     return
 
-def watts_strogatz_model(N, beta, k, output='matrix'):
+def WSM(N, beta, k, output='matrix'):
     adjacency = regular_ring_lattice(N, k, output)
 
     if output == 'list':
@@ -138,9 +139,10 @@ def watts_strogatz_model(N, beta, k, output='matrix'):
         return adjacency
 
     elif output == 'matrix':
+
         pass #TODO
 
-def stochastic_block_model(P=None, z=None, s=None, output='matrix'):
+def SBM(z=None, s=None, P=None, output='matrix'):
 
     '''
     Create a random graph with predetermined community structure.
@@ -174,14 +176,26 @@ def stochastic_block_model(P=None, z=None, s=None, output='matrix'):
     if z is None:
         z = [idx for idx, i in enumerate(s) for j in range(i)]
 
-    K = len(s)
+    if s is None:
+        K = len(set(z))
+    else:
+        K = len(s)
+
     N = len(z)
 
     if P is None:
         P = 0.9 * np.eye(K) * np.random.random(K) + 0.1*np.random.random((K,K))
 
     if output == 'matrix':
-        return np.random.random((N,N)) < P[z*np.ones((N,1), dtype=bool), np.array(z)[:,None]*np.ones((1,N),dtype=bool)]
+        adjacency = np.random.random((N,N)) < P[z*np.ones((N,1), dtype=bool), np.array(z)[:,None]*np.ones((1,N),dtype=bool)]
+        return np.triu(adjacency, k=1) |  np.triu(adjacency, k=1).T
 
     if output == 'list':
-        pass #TODO
+        adjacency = [[] for _ in range(N)]
+        for i in range(N):
+            for j in range(i):
+                if random.random() < P[z[i]][z[j]]:
+                    adjacency[i].append(j)
+                    adjacency[j].append(i)
+        return adjacency
+

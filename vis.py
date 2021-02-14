@@ -3,6 +3,9 @@ import random
 import plotly.graph_objects as go
 from simulationtools import annealing
 from copy import deepcopy
+from utils import *
+
+HEIGHT = 1000
 
 def semi_circle(x1, x2):
     angle = np.linspace(0, np.pi, int(abs(x2-x1) * 1000))
@@ -10,7 +13,7 @@ def semi_circle(x1, x2):
     y_coords = abs(x2-x1)/2 * np.sin(angle)
     return x_coords, y_coords
 
-def diagram_arcs(adjacency):
+def arcs(adjacency):
     fig = go.Figure()
     N = len(adjacency)
     x_coords = np.linspace(0,1,N)
@@ -66,7 +69,7 @@ def radial_semi_circle(a1, a2):
     p3 = np.array([np.sin(a2), np.cos(a2)])
     return quadratic_bezier_curve(p1, p2, p3).T
 
-def diagram_radial(adjacency):
+def radial(adjacency):
     fig = go.Figure()
     N = len(adjacency)
     angle = np.linspace(0,2*np.pi,N+1)[1:]
@@ -136,8 +139,8 @@ def optimize_arc(adjacency):
     perm = annealing(swap_nodes, initial_perm, 1000)
     return perm
 
-#TODO: the computations are incorrect!
 def optimize_radial(adjacency):
+    #TODO: the computations are incorrect!
     '''
     Optimize vertex arrangement via simulated annealing for the radial type visualization. The elementary step is swapping two vertices, the energy is the sum of edge lengths.
     '''
@@ -176,3 +179,20 @@ def optimize_radial(adjacency):
 
     perm = annealing(swap_nodes, initial_perm, 1000)
     return perm
+
+def matrix(adjacency):
+    if islist(adjacency):
+        adjacency = list2mat(adjacency)
+
+    fig = go.Figure(data=go.Heatmap(
+        z=adjacency[::-1].astype(int),
+        showscale=False
+        ))
+    fig.update_yaxes(tickvals=[], scaleanchor='x')
+    fig.update_xaxes(tickvals=[])
+    fig.update_layout(width=HEIGHT-20, height=HEIGHT)
+
+    fig.show()
+    return
+
+

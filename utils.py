@@ -60,14 +60,30 @@ def edge_list(adjacency):
     else:
         return 'Wrong input!'
 
+def sort_by_degree(adjacency):
+    d = degree(adjacency)
+    if islist(d):
+        pass #TODO
+    elif ismat(d):
+        iperm = np.arange(len(d))[d.argsort()][::-1]
+        return rearrange(adjacency, inverse_permutation(iperm))
+
+def inverse_permutation(perm):
+    if islist(perm):
+        return [i for i, j in sorted(enumerate(perm), key=lambda i_j: i_j[1])]
+    elif ismat(perm):
+        iperm = np.empty_like(perm)
+        iperm[perm] = np.arange(len(iperm), dtype=iperm.dtype)
+        return iperm
+
 def rearrange(adjacency, perm):
     '''
     Rearrange nodes in an adjacency matrix or list for vanity purposes.
     '''
     N = len(perm)
-    inv_perm = [j for i in range(N) for j in perm if perm[j]==i]
+    iperm = inverse_permutation(perm)
     if islist(adjacency):
-        return [[perm[j] for j in adjacency[i]] for i in inv_perm]
+        return [[perm[j] for j in adjacency[i]] for i in iperm]
     elif ismat(adjacency):
         new_adjacency = np.zeros_like(adjacency, dtype=bool)
         for v1, v2 in edge_list(adjacency):
