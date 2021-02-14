@@ -104,7 +104,13 @@ def regular_ring_lattice(N, k=2, output='matrix'):
     if output not in ['matrix', 'list']:
         raise TypeError('Wrong output format!')
 
-    if output == 'matrix':
+    if output == 'list':
+        adjacency_list = []
+        for i in range(N):
+            adjacency_list.append([(i+offset)%N for offset in range(-k//2, k//2+1) if offset !=0])
+        return adjacency_list
+
+    elif output == 'matrix':
         adjacency = np.zeros((N,N), dtype=bool)
         r = np.arange(N)
         #z = (r[:,None] - np.arange(1,k//2+1)) % N
@@ -112,15 +118,11 @@ def regular_ring_lattice(N, k=2, output='matrix'):
             adjacency[r, (r+offset)%N] = True
         return adjacency | adjacency.T
 
-    elif output == 'list':
-        adjacency_list = []
-        for i in range(N):
-            adjacency_list.append([(i+offset)%N for offset in range(-k//2, k//2+1) if offset !=0])
-        return adjacency_list
     print('Something went wrong!')
     return
 
 def WSM(N, beta, k, output='matrix'):
+    # TODO: this might require some optimization
     adjacency = regular_ring_lattice(N, k, output)
 
     if output == 'list':
@@ -129,7 +131,6 @@ def WSM(N, beta, k, output='matrix'):
             for j in range(i+1, i+k//2+1):
                 j = j%N
                 if random.random() < beta:
-
                     avail = vertset.difference(neigh.union({i}))
                     r = random.sample(vertset.difference(neigh.union({i})), k=1)[0]
                     adjacency[i].remove(j)
@@ -139,8 +140,16 @@ def WSM(N, beta, k, output='matrix'):
         return adjacency
 
     elif output == 'matrix':
-
-        pass #TODO
+        for i in range(N):
+            for j in range(i+1, i+k//2+1):
+                j = j%N
+                if random.random() < beta:
+                    r = np.random.choice(np.where(np.delete(adjacency[i], i) == False)[0])
+                    adjacency[i, r] = True
+                    adjacency[r, i] = True
+                    adjacency[i, j] = False
+                    adjacency[j, i] = False
+        return adjacency | adjacency.T
 
 def SBM(z=None, s=None, P=None, output='matrix'):
 
@@ -188,7 +197,7 @@ def SBM(z=None, s=None, P=None, output='matrix'):
 
     if output == 'matrix':
         adjacency = np.random.random((N,N)) < P[z*np.ones((N,1), dtype=bool), np.array(z)[:,None]*np.ones((1,N),dtype=bool)]
-        return np.triu(adjacency, k=1) |  np.triu(adjacency, k=1).T
+        return np.triu(adjacency, k=1) |  np.triu(adjacency, k=1).T, z
 
     if output == 'list':
         adjacency = [[] for _ in range(N)]
@@ -197,5 +206,5 @@ def SBM(z=None, s=None, P=None, output='matrix'):
                 if random.random() < P[z[i]][z[j]]:
                     adjacency[i].append(j)
                     adjacency[j].append(i)
-        return adjacency
+        return adjacency, z
 
