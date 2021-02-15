@@ -197,4 +197,20 @@ def matrix(adjacency):
     fig.show()
     return
 
+def force_directed(adjacency, z=None, initial_position=None):
+    '''
+    Force directed graph drawing.
+    '''
+    if initial_position is not None:
+        coord = initial_position
+    elif z is not None:
+        K = len
+        group_coord = 2 * np.random.random((K,2)) - 1
+        coord = group_coord[z] + np.random.random((z,2)) / 5 - 1/10
+    else:
+        coord = 2 * np.random.random((z,2)) - 1
+
+
+
+
 

@@ -3,12 +3,34 @@ from itertools import combinations
 import random
 from simulationtools import annealing
 from copy import deepcopy
+from timeit import default_timer as timer
+import heapq
+
+def add_edge(adjacency_list, edge):
+    adjacency_list[edge[0]].append(edge[1])
+    adjacency_list[edge[1]].append(edge[0])
+
+def remove_edge(adjacency_list, edge):
+    adjacency_list[edge[0]].remove(edge[1])
+    adjacency_list[edge[1]].remove(edge[0])
+
+def rewire_edge(adjacency_list, edge1, edge2):
+    remove(adjacency_list, edge1)
+    add(adjacency_list, edge2)
 
 def unique_sample(seq, size):
     samples = {}
     while len(samples) < size:
         samples.add(RNG.choice(seq))
     return samples
+
+def elapsed(func, reps=1):
+    start = timer()
+    for _ in range(reps):
+        func
+    dt = timer() - start
+    print('Average time over {} rounds: {} s'.format(reps, dt))
+    return
 
 def mat2list(adjacency_matrix):
     '''
@@ -81,7 +103,6 @@ def group_sort(adjacency, z, order='index'):
         perm = inverse_permutation(iperm)
         return rearrange(adjacency, perm), z[iperm]
 
-
 def degree_sort(adjacency, descending=True):
     '''
     Sort vertices by their degree. Descending order by default.
@@ -115,3 +136,87 @@ def rearrange(adjacency, perm):
         for v1, v2 in edge_list(adjacency):
             new_adjacency[perm[v1], perm[v2]] = True
         return new_adjacency | new_adjacency.T
+
+def ispercolating(adjacency):
+    return len(identify_components(adjacency)) == 1
+
+def identify_components(adjacency):
+    N = len(adjacency)
+
+    if islist(adjacency):
+        components = []
+        identified = []
+        for v1 in range(N):
+            if v1 not in identified:
+                comp = []
+                stack = [v1]
+                while 0 < len(stack):
+                    v2 = stack.pop()
+                    identified.append(v2)
+                    comp.append(v2)
+                    for v3 in adjacency[v2]:
+                        if v3 not in identified and v3 not in stack:
+                            stack.append(v3)
+                components.append(comp)
+        return components
+
+    elif ismat(adjacency):
+        components = identified = np.zeros(N, dtype=int)
+        comp_id = 1
+        for v1 in range(N):
+            if components[v1] == 0:
+                comp = np.zeros(N, bool)
+                comp[v1] = True
+                old_size, new_size = 0, 1
+                while old_size != new_size:
+                    comp = comp | adjacency @ comp
+                    old_size = new_size
+                    new_size = sum(comp)
+                components[comp] = comp_id
+                comp_id += 1
+        return components - 1
+
+def dijsktra(adjacency, source):
+    N = len(adjacency)
+
+    if islist(adjacency):
+        Q = []
+        visited = np.zeros(N, bool)
+        distance = np.full(N, np.inf)
+        parent = -np.ones(N, int)
+
+        distance[source] = 0
+        visited[source] = True
+        heapq.heappush(Q, (0, source))
+
+        while 0 < len(Q):
+            vertex_dist, vertex = heapq.pop(Q)
+            for neighbour in adjacency[vertex]:
+                new_dist = vertex_dist + 1
+
+
+                neighbour_dist = min(distance[neighbour], distance[vertex]+1)
+
+    if ismat(adjacency):
+        visited = inqueue = np.zeros(N, bool)
+        distance = np.full(N, np.inf)
+        vertices = np.arange(N)
+
+        distance[source] = 0
+        visited[source] = True
+        inqueue[source] = True
+
+        while np.any(inqueue):
+            vertex = vertices[inqueue][distance[inqueue].argmin()]
+            neighbours = adjacency[vertex]
+            distance[neighbours] = np.minimum(distance[neighbours], distance[vertex]+1)
+            unvisited_neighbours = neighbours & ~visited & ~inqueue
+            inqueue = inqueue | unvisited_neighbours
+            inqueue[vertex] = False
+            visited[vertex] = True
+        return distance
+
+
+
+
+
