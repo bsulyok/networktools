@@ -13,10 +13,10 @@ def remove_edge(adjacency_list, edge):
     adjacency_list[edge[1]].remove(edge[0])
 
 def rewire_edge(adjacency_list, edge1, edge2):
-    remove(adjacency_list, edge1)
-    add(adjacency_list, edge2)
+    remove_edge(adjacency_list, edge1)
+    add_edge(adjacency_list, edge2)
 
-def erdos_renyi_graph(N, edge_param):
+def erdos_renyi_graph(N, edge_param, output='graph'):
 
     '''
     Create an Erdos-Renyi random graph.
@@ -45,7 +45,7 @@ def erdos_renyi_graph(N, edge_param):
         for i, j in combinations(range(N), r=2):
             if random.random() < p:
                 add_edge(adjacency_list, (i,j))
-        return Graph(adjacency_list)
+        return adjacency_list
 
     # adjacency list with edge probability
     elif type(edge_param) is int and 0 < edge_param:
@@ -57,10 +57,14 @@ def erdos_renyi_graph(N, edge_param):
             if j not in adjacency_list[i]:
                 add_edge(adjacency_list, (i,j))
                 L -= 1
-        return Graph(adjacency_list)
-
+        return adjacency_list
     else:
         raise TypeError('Wrong edge parameter!')
+    if output=='graph':
+        return Graph(adjacency_list)
+    else:
+        return adjacency_list
+
 
 def SBMP(s):
     K = len(s)
@@ -72,8 +76,9 @@ def SBMP(s):
         if i == j:
             P[i][i] = prob
         else:
-            P[i][j] = scale*prob
-            P[j][i] = scale*prob
+            prob2 = abs(random.normalvariate(prob, 0.05))
+            P[i][j] = prob2
+            P[j][i] = prob2
     return P
 
 def stochastic_block_model(s, P=None):
@@ -106,7 +111,7 @@ def stochastic_block_model(s, P=None):
             add_edge(adjacency_list, (i,j))
     return Graph(adjacency_list)
 
-def barabasi_albert_graph(N, m, output='matrix'):
+def barabasi_albert_graph(N, m, output='graph'):
 
     '''
     Create a Barabasi-Albert random graph. The initial clique is of size 2m.
@@ -132,13 +137,11 @@ def barabasi_albert_graph(N, m, output='matrix'):
         raise TypeError('N must be an integer larger than 8')
     if type(m) is not int or m < 1 or N < 2*m:
         raise TypeError('m must be a positive integer not larger than N/2')
-    if output not in ['matrix', 'list']:
-        raise TypeError('Wrong output format requested!')
 
 
     clique = 2*m
 
-    adjacency_list = ER(clique, clique**2 // 4, output='list')
+    adjacency_list = erdos_renyi_graph(clique, clique**2 // 4, output='list')
     stubs = np.concatenate(([len(i) for i in adjacency_list], np.zeros(N-clique)))
     stubs[:clique] += 1
     stubs = np.concatenate((np.ones(clique), np.zeros(N-clique)))
@@ -156,7 +159,7 @@ def barabasi_albert_graph(N, m, output='matrix'):
 def regular_ring_lattice(N, k):
     return [[j%N for j in range(i-k//2, i+k//2+1) if j!=i] for i in range(N)]
 
-def watts_stogratz_graph(N, k=2, beta=0.5):
+def watts_stogratz_graph(N, k=2, beta=0.5, output='graph'):
 
     '''
     Create a regular ring lattice.

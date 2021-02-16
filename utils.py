@@ -4,19 +4,31 @@ import random
 from simulationtools import annealing
 from copy import deepcopy
 from timeit import default_timer as timer
+from math import inf
 import heapq
 
-def add_edge(adjacency_list, edge):
-    adjacency_list[edge[0]].append(edge[1])
-    adjacency_list[edge[1]].append(edge[0])
-
-def remove_edge(adjacency_list, edge):
-    adjacency_list[edge[0]].remove(edge[1])
-    adjacency_list[edge[1]].remove(edge[0])
-
-def rewire_edge(adjacency_list, edge1, edge2):
-    remove(adjacency_list, edge1)
-    add(adjacency_list, edge2)
+class priority_queue:
+    def __init__(self, reverse=False):
+        self.queue = []
+        heapq.heapify(self.queue)
+        self.reverse=reverse
+    def pop(self):
+        item = heapq.heappop(self.queue)
+        if self.reverse:
+            return (-item[0], item[1])
+        else:
+            return item
+    def push(self, item):
+        if self.reverse:
+            heapq.heappush(self.queue, (-item[0], item[1]))
+        else:
+            heapq.heappush(self.queue, item)
+    def __len__(self):
+        return len(self.queue)
+    def __max__(self):
+        return max(self.queue)
+    def __min__(self):
+        return min(self.queue)
 
 def unique_sample(seq, size):
     samples = {}
@@ -44,47 +56,21 @@ def mat2list(adjacency_matrix):
     return adjacency_list
 
 def list2mat(adjacency_list):
-    '''
-    Produce the adjacency matrix of the given adjacency list.
-    '''
     N = len(adjacency_list)
-    adjacency_matrix = np.zeros((N,N), dtype=bool)
-    for i in range(N):
-        for j in adjacency_list[i]:
-            adjacency_matrix[i,j] = True
+    adjacency_matrix = np.zeros((N,N), bool)
+    for i, neigh in enumerate(adjacency_list):
+        adjacency_matrix[i, neigh] = True
+        adjacency_matrix[neigh, i] = True
     return adjacency_matrix
+
+def edge_list(adjacency_list):
+    return ((i,j) for i, neigh in enumerate(adjacency_list) for j in neigh if j < i)
 
 def islist(target):
     return type(target) is list
 
 def ismat(target):
     return type(target) is np.ndarray
-
-def degree(adjacency):
-    '''
-    Compute the edge degree of each vertex.
-    '''
-    if islist(adjacency):
-        return np.array([len(v) for v in adjacency])
-    elif ismat(adjacency):
-        return adjacency.sum(0)
-
-def edge_number(adjacency):
-    '''
-    Compute the total number of edges.
-    '''
-    return sum(degree(adjacency))//2
-
-def edge_list(adjacency):
-    '''
-    Returns an array or list of all unique edges in the graph.
-    '''
-    if islist(adjacency):
-        return [(i,j) for i, neigh in enumerate(adjacency) for j in neigh if j < i]
-    elif ismat(adjacency):
-        return np.argwhere(np.triu(adjacency, k=1))
-    else:
-        return 'Wrong input!'
 
 def group_sort(adjacency, z, order='index'):
     '''
@@ -118,10 +104,6 @@ def degree_sort(adjacency, descending=True):
 def inverse_permutation(perm):
     if islist(perm):
         return [i for i, j in sorted(enumerate(perm), key=lambda i_j: i_j[1])]
-    elif ismat(perm):
-        iperm = np.empty_like(perm)
-        iperm[perm] = np.arange(len(iperm), dtype=iperm.dtype)
-        return iperm
 
 def rearrange(adjacency, perm):
     '''
@@ -137,86 +119,63 @@ def rearrange(adjacency, perm):
             new_adjacency[perm[v1], perm[v2]] = True
         return new_adjacency | new_adjacency.T
 
-def ispercolating(adjacency):
-    return len(identify_components(adjacency)) == 1
+def ispercolating(adjacency_list):
+    return len(identify_components(adjacency_list)) == 1
 
-def identify_components(adjacency):
-    N = len(adjacency)
+def identify_components(adjacency_list):
+    '''
+    Identify disjunct components via a simple percolation algorithm.
+    '''
+    components = []
+    identified = []
+    for v1 in range(len(N)):
+        if v1 not in identified:
+            comp = []
+            stack = [v1]
+            while 0 < len(stack):
+                v2 = stack.pop()
+                identified.append(v2)
+                comp.append(v2)
+                for v3 in adjacency_list[v2]:
+                    if v3 not in identified and v3 not in stack:
+                        stack.append(v3)
+            components.append(comp)
+    return components
 
-    if islist(adjacency):
-        components = []
-        identified = []
-        for v1 in range(N):
-            if v1 not in identified:
-                comp = []
-                stack = [v1]
-                while 0 < len(stack):
-                    v2 = stack.pop()
-                    identified.append(v2)
-                    comp.append(v2)
-                    for v3 in adjacency[v2]:
-                        if v3 not in identified and v3 not in stack:
-                            stack.append(v3)
-                components.append(comp)
-        return components
+def distance(adjacency_list, source, target=None):
+    '''
+    Find the graph theoretical distance using the Dijsktra algorithm.
+    If a target node is provided the program terminates when target is reached and only the distance between source and target is returned.
+    '''
+    N = len(adjacency_list)
+    if islist(adjacency_list):
 
-    elif ismat(adjacency):
-        components = identified = np.zeros(N, dtype=int)
-        comp_id = 1
-        for v1 in range(N):
-            if components[v1] == 0:
-                comp = np.zeros(N, bool)
-                comp[v1] = True
-                old_size, new_size = 0, 1
-                while old_size != new_size:
-                    comp = comp | adjacency @ comp
-                    old_size = new_size
-                    new_size = sum(comp)
-                components[comp] = comp_id
-                comp_id += 1
-        return components - 1
-
-def dijsktra(adjacency, source):
-    N = len(adjacency)
-
-    if islist(adjacency):
         Q = []
-        visited = np.zeros(N, bool)
-        distance = np.full(N, np.inf)
-        parent = -np.ones(N, int)
-
+        visited = [False for i in range(N)]
+        distance = [inf for i in range(N)]
+        parent = [None for i in range(N)]
         distance[source] = 0
-        visited[source] = True
         heapq.heappush(Q, (0, source))
 
         while 0 < len(Q):
-            vertex_dist, vertex = heapq.pop(Q)
-            for neighbour in adjacency[vertex]:
-                new_dist = vertex_dist + 1
-
-
-                neighbour_dist = min(distance[neighbour], distance[vertex]+1)
-
-    if ismat(adjacency):
-        visited = inqueue = np.zeros(N, bool)
-        distance = np.full(N, np.inf)
-        vertices = np.arange(N)
-
-        distance[source] = 0
-        visited[source] = True
-        inqueue[source] = True
-
-        while np.any(inqueue):
-            vertex = vertices[inqueue][distance[inqueue].argmin()]
-            neighbours = adjacency[vertex]
-            distance[neighbours] = np.minimum(distance[neighbours], distance[vertex]+1)
-            unvisited_neighbours = neighbours & ~visited & ~inqueue
-            inqueue = inqueue | unvisited_neighbours
-            inqueue[vertex] = False
+            vertex_dist, vertex = heapq.heappop(Q)
+            if visited[vertex]:
+                continue
             visited[vertex] = True
-        return distance
+            if target is not None and vertex == target:
+                return vertex_dist
+            for neighbour in adjacency_list[vertex]:
+                if visited[neighbour]:
+                    continue
+                new_dist = vertex_dist + 1
+                if new_dist < distance[neighbour]:
+                    distance[neighbour] = new_dist
+                    parent[neighbour] = vertex
+                    heapq.heappush(Q, (new_dist, neighbour))
+    return distance, parent
 
-
-
-
-
+def alldistance(adjacency_list):
+    '''
+    Calculate the graph theoretical distance for all pairs of vertices.
+    '''
+    return [distance(adjacency_list, source)[0] for source in range(len(adjacency_list))]

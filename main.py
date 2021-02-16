@@ -4,7 +4,7 @@ import timeit
 import classes
 
 import models
-import vis
+import drawing
 from utils import *
 
 def main():
