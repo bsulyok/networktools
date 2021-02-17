@@ -1,7 +1,7 @@
 import numpy as np
 import random
 import plotly.graph_objects as go
-from simulationtools import annealing
+from simulationtools import annealing, kamada_kawai
 from copy import deepcopy
 from itertools import combinations
 import utils
@@ -16,13 +16,14 @@ def semi_circle(x1, x2):
     return x_coords, y_coords
 
 def arc(adjacency_list, edge_list=None, z=None):
-
     N = len(adjacency_list)
-    edge_list = utils.edge_list(adjacency_list) if edge_list is None else edge_list
-    x_coords = np.linspace(0,1,N)
+    edge_width = 1
+    vertex_size = 10
+    coords = np.stack(np.linspace(0,1,N), np.zeros(N)).T
 
     fig = go.Figure()
 
+    edge_list = utils.edge_list(adjacency_list) if edge_list is None else edge_list
     for i, j in edge_list:
         scx, scy = semi_circle(x_coords[i], x_coords[j])
         fig.add_trace(go.Scattergl(
@@ -35,8 +36,8 @@ def arc(adjacency_list, edge_list=None, z=None):
         ))
 
     fig.add_trace(go.Scattergl(
-        x=x_coords,
-        y=np.zeros(N),
+        x=coords[:,0],
+        y=coords[:,1],
         mode='markers',
         marker_size=10,
         marker_color='blue' if z is None else z,
@@ -53,14 +54,12 @@ def quadratic_bezier_curve(p1, p2, p3):
 
     '''
     Compute the quadratic Bezier curve for the given points
-
     Parameters
     ----------
     p1, p2, p3 : array_like
         Points defining the Bezier curve.
     num : int
         Number of points on the curve.
-
     Returns
     ---------
     curve : ndarray
@@ -68,50 +67,48 @@ def quadratic_bezier_curve(p1, p2, p3):
     '''
 
     t = np.linspace(0,1,100)[:,None]
-    return p2 + (1-t)**2 * (p1 - p2) + t**2 * (p3 - p2)
+    return (p2 + (1-t)**2 * (p1 - p2) + t**2 * (p3 - p2)).T
 
-def radial_semi_circle(a1, a2):
-    p1 = np.array([np.sin(a1), np.cos(a1)])
-    p2 = np.array([0,0])
-    p3 = np.array([np.sin(a2), np.cos(a2)])
-    return quadratic_bezier_curve(p1, p2, p3).T
-
-def radial(adjacency_list, edge_list=None, arcs=False, z=None):
-
+def radial(adjacency_list, edge_list=None, arcs=True, z=None):
     N = len(adjacency_list)
-    edge_list = utils.edge_list(adjacency_list) if edge_list is None else edge_list
-    angle = np.linspace(0,2*np.pi,N+1)[1:]
+    edge_width = 1
+    vertex_size = 10
+    center = np.ones(2) / 2
+    angle = np.linspace(0, 2*np.pi, N+1)[1:]
+    coords = np.stack([np.sin(angle), np.cos(angle)]).T / 2 + center
 
     fig = go.Figure()
 
+    edge_list = utils.edge_list(adjacency_list) if edge_list is None else edge_list
     if arcs:
         for i, j in edge_list:
-            rscx, rscy = radial_semi_circle(angle[i], angle[j])
+
+            rscx, rscy = quadratic_bezier_curve(coords[i], np.ones(2)/4 + coords[i]/4+coords[j]/4, coords[j])
             fig.add_trace(go.Scattergl(
                 x=rscx,
                 y=rscy,
                 mode='lines',
-                line_width=1,
+                line_width=edge_width,
                 line_color='red',
                 showlegend=False
             ))
     else:
         for i, j in edge_list:
             fig.add_trace(go.Scattergl(
-                x=np.sin(angle[[i,j]]),
-                y=np.cos(angle[[i,j]]),
+                x=coords[[i,j], 0],
+                y=coords[[i,j], 1],
                 mode='lines',
-                line_width=1,
+                line_width=edge_width,
                 line_color='red',
                 showlegend=False
             ))
 
 
     fig.add_trace(go.Scattergl(
-        x=np.sin(angle),
-        y=np.cos(angle),
+        x=coords[:,0],
+        y=coords[:,1],
         mode='markers',
-        marker_size=10,
+        marker_size=vertex_size,
         marker_color='blue' if z is None else z,
         showlegend=False
     ))
@@ -228,10 +225,13 @@ def force_directed(adjacency, z=None, initial_position=None):
     else:
         coord = 2 * np.random.random((z,2)) - 1
 
-def pretty(adjacency_list, edge_list=None, z=None):
-    coords = kamada_kawai(adjacency_list)
+def kamada_kawai(adjacency_list, edge_list=None, z=None):
+    if not utils.ispercolating(adjacency_list):
+        return "Discjunct components!"
+    GD = np.array(utils.graph_theoretical_distance(adjacency_list))
+    optres = solve_kamada_kawai(adjacency_list, GD)
     N = len(adjacency_list)
-    #coords = np.random.rand(N,2)
+    coords = optres.x.reshape((N,2))
 
     edge_list = utils.edge_list(adjacency_list) if edge_list is None else edge_list
 

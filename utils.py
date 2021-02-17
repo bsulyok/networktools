@@ -1,48 +1,11 @@
 import numpy as np
 from itertools import combinations
 import random
-from simulationtools import annealing
 from copy import deepcopy
 from timeit import default_timer as timer
 from math import inf
+from common import priority_queue
 import heapq
-
-class priority_queue:
-    def __init__(self, reverse=False):
-        self.queue = []
-        heapq.heapify(self.queue)
-        self.reverse=reverse
-    def pop(self):
-        item = heapq.heappop(self.queue)
-        if self.reverse:
-            return (-item[0], item[1])
-        else:
-            return item
-    def push(self, item):
-        if self.reverse:
-            heapq.heappush(self.queue, (-item[0], item[1]))
-        else:
-            heapq.heappush(self.queue, item)
-    def __len__(self):
-        return len(self.queue)
-    def __max__(self):
-        return max(self.queue)
-    def __min__(self):
-        return min(self.queue)
-
-def unique_sample(seq, size):
-    samples = {}
-    while len(samples) < size:
-        samples.add(RNG.choice(seq))
-    return samples
-
-def elapsed(func, reps=1):
-    start = timer()
-    for _ in range(reps):
-        func
-    dt = timer() - start
-    print('Average time over {} rounds: {} s'.format(reps, dt))
-    return
 
 def mat2list(adjacency_matrix):
     '''
@@ -128,7 +91,7 @@ def identify_components(adjacency_list):
     '''
     components = []
     identified = []
-    for v1 in range(len(N)):
+    for v1 in range(len(adjacency_list)):
         if v1 not in identified:
             comp = []
             stack = [v1]
@@ -142,40 +105,42 @@ def identify_components(adjacency_list):
             components.append(comp)
     return components
 
-def distance(adjacency_list, source, target=None):
+def dijsktra(adjacency_list, source, target=None):
     '''
     Find the graph theoretical distance using the Dijsktra algorithm.
     If a target node is provided the program terminates when target is reached and only the distance between source and target is returned.
     '''
     N = len(adjacency_list)
-    if islist(adjacency_list):
-
-        Q = []
-        visited = [False for i in range(N)]
-        distance = [inf for i in range(N)]
-        parent = [None for i in range(N)]
-        distance[source] = 0
-        heapq.heappush(Q, (0, source))
-
-        while 0 < len(Q):
-            vertex_dist, vertex = heapq.heappop(Q)
-            if visited[vertex]:
+    Q = priority_queue()
+    visited = [False for i in range(N)]
+    distance = [inf for i in range(N)]
+    distance[source] = 0
+    Q.push( (0, source) )
+    while 0 < len(Q):
+        vertex_dist, vertex = Q.pop()
+        if visited[vertex]:
+            continue
+        visited[vertex] = True
+        if target is not None and vertex == target:
+            return vertex_dist
+        for neighbour in adjacency_list[vertex]:
+            if visited[neighbour]:
                 continue
-            visited[vertex] = True
-            if target is not None and vertex == target:
-                return vertex_dist
-            for neighbour in adjacency_list[vertex]:
-                if visited[neighbour]:
-                    continue
-                new_dist = vertex_dist + 1
-                if new_dist < distance[neighbour]:
-                    distance[neighbour] = new_dist
-                    parent[neighbour] = vertex
-                    heapq.heappush(Q, (new_dist, neighbour))
-    return distance, parent
+            new_dist = vertex_dist + 1
+            if new_dist < distance[neighbour]:
+                distance[neighbour] = new_dist
+                Q.push( (new_dist, neighbour) )
+    return distance
 
-def alldistance(adjacency_list):
+def graph_theoretical_distance(adjacency_list, source=None, target=None):
     '''
     Calculate the graph theoretical distance for all pairs of vertices.
     '''
-    return [distance(adjacency_list, source)[0] for source in range(len(adjacency_list))]
+    if source is None and target is None:
+        return [dijsktra(adjacency_list, source) for source in range(len(adjacency_list))]
+    elif source is not None and target is None:
+        return dijsktra(adjacency_list, source)
+    elif source is not None and target is not None:
+        return dijsktra(adjacency_list, source, target)
+    else:
+        return 'Wrong input!'

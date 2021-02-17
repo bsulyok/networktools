@@ -45,7 +45,6 @@ def erdos_renyi_graph(N, edge_param, output='graph'):
         for i, j in combinations(range(N), r=2):
             if random.random() < p:
                 add_edge(adjacency_list, (i,j))
-        return adjacency_list
 
     # adjacency list with edge probability
     elif type(edge_param) is int and 0 < edge_param:
@@ -57,7 +56,6 @@ def erdos_renyi_graph(N, edge_param, output='graph'):
             if j not in adjacency_list[i]:
                 add_edge(adjacency_list, (i,j))
                 L -= 1
-        return adjacency_list
     else:
         raise TypeError('Wrong edge parameter!')
     if output=='graph':
