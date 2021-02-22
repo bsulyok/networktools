@@ -1,7 +1,7 @@
 import numpy as np
 import random
 import plotly.graph_objects as go
-from simulationtools import annealing, kamada_kawai
+from simulationtools import annealing, solve_kamada_kawai
 from copy import deepcopy
 from itertools import combinations
 import utils
@@ -227,7 +227,8 @@ def force_directed(adjacency, z=None, initial_position=None):
 
 def kamada_kawai(adjacency_list, edge_list=None, z=None):
     if not utils.ispercolating(adjacency_list):
-        return "Discjunct components!"
+        print("Discjunct components!")
+        return
     GD = np.array(utils.graph_theoretical_distance(adjacency_list))
     optres = solve_kamada_kawai(adjacency_list, GD)
     N = len(adjacency_list)

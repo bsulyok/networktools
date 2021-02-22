@@ -1,7 +1,7 @@
 import numpy as np
 from itertools import combinations
 import random
-from drawing import arc, radial, matrix
+from drawing import arc, radial, matrix, kamada_kawai
 
 class Graph(object):
     def __init__(self, adjacency_list, gids=None):
@@ -63,7 +63,8 @@ class Graph(object):
     def draw_matrix(self):
         matrix(self.adjacency)
 
-
+    def kamada_kawai(self):
+        kamada_kawai(self.adjacency)
 
 
 
