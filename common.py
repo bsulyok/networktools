@@ -17,12 +17,12 @@ class priority_queue:
     def max(self):
         return max(self.queue)[0]
 
-def elapsed(func, reps=1):
+def elapsed(func, reps=1, **kwargs):
     start = timer()
-    for _ in range(reps):
-        func
+    for i in range(reps):
+        _ = func(**kwargs)
     dt = timer() - start
-    print('Average time over {} rounds: {} s'.format(reps, dt))
+    print('Average time over {} rounds: {} s'.format(reps,dt/reps))
     return
 
 def inverse_permutation(perm):
