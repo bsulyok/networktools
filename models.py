@@ -4,20 +4,24 @@ from itertools import combinations, combinations_with_replacement
 import random
 from classes import Graph
 
-def add_edge(adjacency_list, edge):
-    adjacency_list[edge[0]].append(edge[1])
-    adjacency_list[edge[1]].append(edge[0])
+def empty_graph(N):
+    '''
+    Create an empty graph of given size.
+    Parameters
+    ----------
+    N:int
+        Number of vertices.
+    Returns
+    -------
+    G : Graph
+        Generated empty graph
+    '''
+    G = Graph()
+    for i in range(N):
+        G.add_vertex(i)
+    return G
 
-def remove_edge(adjacency_list, edge):
-    adjacency_list[edge[0]].remove(edge[1])
-    adjacency_list[edge[1]].remove(edge[0])
-
-def rewire_edge(adjacency_list, edge1, edge2):
-    remove_edge(adjacency_list, edge1)
-    add_edge(adjacency_list, edge2)
-
-def erdos_renyi_graph(N, edge_param, output='graph'):
-
+def erdos_renyi_graph(N, edge_param=None):
     '''
     Create an Erdos-Renyi random graph.
     Parameters
@@ -34,35 +38,34 @@ def erdos_renyi_graph(N, edge_param, output='graph'):
     adjacency_list : list of lists
         Adjacency list containing edge indices in a concise form.
     '''
-
     if N < 2:
         raise TypeError('This model requires at least two vertices.')
 
-    # adjacency list with edge probability
+    if edge_param is None:
+        edge_param = 3/(N-1)
+
+    G = empty_graph(N)
+
+    # adjacency defined by edge probability
     if 0 < edge_param < 1:
         p = edge_param
-        adjacency_list = [[] for _ in range(N)]
         for i, j in combinations(range(N), r=2):
             if random.random() < p:
-                add_edge(adjacency_list, (i,j))
+                G.add_edge(i, j)
 
-    # adjacency list with edge probability
-    elif type(edge_param) is int and 0 < edge_param:
+    # adjacency defined by binomial vertex selection
+    elif type(edge_param) is int and 0 < edge_param < N*(N-1)/2:
         L = edge_param
-        adjacency_list = [[] for _ in range(N)]
         ran = list(range(N))
         while L > 0:
             i, j = random.sample(ran, k=2)
-            if j not in adjacency_list[i]:
-                add_edge(adjacency_list, (i,j))
+            if (i,j) not in G:
+                G.add_edge(i, j)
                 L -= 1
     else:
         raise TypeError('Wrong edge parameter!')
-    if output=='graph':
-        return Graph(adjacency_list)
-    else:
-        return adjacency_list
 
+    return G
 
 def SBMP(s):
     K = len(s)
@@ -80,37 +83,42 @@ def SBMP(s):
     return P
 
 def stochastic_block_model(s, P=None):
-
     '''
     Create a random graph with predetermined community structure.
     Parameters
     ----------
-    P : ndarray
-        Probability of edges between groups. If not provided a generic sample will be used.
-    z : array_like
-        Group indices of each vertex.
     s : array_like
         Number of vertices in each group. This is an alternative parameter in place of z.
+    P : ndarray
+        Probability of edges between groups. If not provided a generic sample will be used.
     Returns
     -------
-    adjacency_list : list of lists
-        Adjacency list containing edge indices in a concise form.
+    G : Graph
+        Generated SBM graph.
     '''
-
     K = len(s)
     N = sum(s)
 
-    P = SBMP(s) if P is None else P
-    z = [i for i in range(K) for _ in range(s[i])]
+    if P is None:
+        P = [[0 for j in range(K)] for i in range(K)]
+        for i, j in combinations_with_replacement(range(K), r=2):
+            if i == j:
+                P[i][j] = abs(random.normalvariate(3/(s[i]-1), 0.05))
+            else:
+                rnd = abs(random.normalvariate(0.25/(max(s[i], s[j])-1), 0.025))
+                P[i][j] = rnd
+                P[i][j] = rnd
 
-    adjacency_list = [[] for _ in range(N)]
+    P = SBMP(s) if P is None else P
+    z = [i for i,groupsize in enumerate(s) for _ in range(groupsize)]
+    G = empty_graph(N)
+
     for i, j in combinations(range(N), r=2):
         if random.random() < P[z[i]][z[j]]:
-            add_edge(adjacency_list, (i,j))
-    return Graph(adjacency_list)
+            G.add_edge(i, j)
+    return G
 
-def barabasi_albert_graph(N, m, output='graph'):
-
+def barabasi_albert_graph(N, m):
     '''
     Create a Barabasi-Albert random graph. The initial clique is of size 2m.
     Parameters
@@ -130,11 +138,12 @@ def barabasi_albert_graph(N, m, output='graph'):
     adjacency_list : list of lists
         Adjacency list containing edge indices in a concise form.
     '''
-
     if type(N) is not int or N < 8:
         raise TypeError('N must be an integer larger than 8')
     if type(m) is not int or m < 1 or N < 2*m:
         raise TypeError('m must be a positive integer not larger than N/2')
+
+    G = erdos_renyi_graph(2*m, m/(2*m-1))
 
 
     clique = 2*m

@@ -5,43 +5,56 @@ from simulationtools import annealing, solve_kamada_kawai
 from copy import deepcopy
 from itertools import combinations
 import utils
-from math import inf
+from math import inf, pi, sin, cos
+from common import elapsed
 
 HEIGHT = 1000
 
-def semi_circle(x1, x2):
+def semi_circle_np(x1, x2):
     angle = np.linspace(0, np.pi, int(abs(x2-x1) * 1000))
-    x_coords = (x1+x2)/2 + abs(x2-x1)/2 * np.cos(angle)
-    y_coords = abs(x2-x1)/2 * np.sin(angle)
-    return x_coords, y_coords
+    X = (x1+x2)/2 + abs(x2-x1)/2 * np.cos(angle)
+    Y = abs(x2-x1)/2 * np.sin(angle)
+    return X, Y
 
-def arc(adjacency_list, edge_list=None, z=None):
+def semi_circle(x1, x2):
+    X, Y = [], []
+    N = int(abs(x2-x1)*1000)
+    incr = pi/(N-1)
+    center = (x1+x2)/2
+    radius = abs(x1-x2)/2
+    for asd in range(N):
+        angle = asd*incr
+        X.append(center+radius*cos(angle))
+        Y.append(radius*sin(angle))
+    return X, Y
+
+def arc(adjacency_list):
     N = len(adjacency_list)
-    edge_width = 1
-    vertex_size = 10
-    coords = np.stack(np.linspace(0,1,N), np.zeros(N)).T
+    vcoords = {ID:(idx/(N-1), 0) for idx, ID in enumerate(adjacency_list.keys())}
 
     fig = go.Figure()
 
-    edge_list = utils.edge_list(adjacency_list) if edge_list is None else edge_list
-    for i, j in edge_list:
-        scx, scy = semi_circle(x_coords[i], x_coords[j])
-        fig.add_trace(go.Scattergl(
-            x=scx,
-            y=scy,
-            mode='lines',
-            line_width=1,
-            line_color='red',
-            showlegend=False
-        ))
+    for vertex, neighbourhood in adjacency_list.items():
+        for neighbour in neighbourhood:
+            if vertex < neighbour:
+                scx, scy = semi_circle(vcoords[vertex][0], vcoords[neighbour][0])
+                fig.add_trace(go.Scattergl(
+                    x=scx,
+                    y=scy,
+                    mode='lines',
+                    line_width=1,
+                    line_color='red',
+                    showlegend=False
+                ))
 
     fig.add_trace(go.Scattergl(
-        x=coords[:,0],
-        y=coords[:,1],
+        x=np.arange(N)/(N-1),
+        y=np.zeros(N),
         mode='markers',
         marker_size=10,
-        marker_color='blue' if z is None else z,
-        showlegend=False
+        marker_color='blue',
+        showlegend=False,
+        text='a'
     ))
 
     fig.update_xaxes(tickvals=[], zeroline=False)
@@ -65,51 +78,52 @@ def quadratic_bezier_curve(p1, p2, p3):
     curve : ndarray
         Point of the generated curve.
     '''
-
-    t = np.linspace(0,1,100)[:,None]
+    N = 100
+    p1, p2, p3 = np.array(p1), np.array(p2), np.array(p3)
+    t = np.linspace(0,1,N)[:,None]
     return (p2 + (1-t)**2 * (p1 - p2) + t**2 * (p3 - p2)).T
 
-def radial(adjacency_list, edge_list=None, arcs=True, z=None):
+def radial(adjacency_list, arcs=True):
     N = len(adjacency_list)
-    edge_width = 1
-    vertex_size = 10
-    center = np.ones(2) / 2
-    angle = np.linspace(0, 2*np.pi, N+1)[1:]
-    coords = np.stack([np.sin(angle), np.cos(angle)]).T / 2 + center
+    edge_width, vertex_size = 1, 10
+    vcoords = {ID:(sin(2*pi*idx/N), cos(2*pi*idx/N)) for idx, ID in enumerate(adjacency_list.keys())}
 
     fig = go.Figure()
 
-    edge_list = utils.edge_list(adjacency_list) if edge_list is None else edge_list
     if arcs:
-        for i, j in edge_list:
+        for vertex, neighbourhood in adjacency_list.items():
+            for neighbour in neighbourhood:
+                if vertex < neighbour:
+                    rscx, rscy = quadratic_bezier_curve(vcoords[vertex], (0,0), vcoords[neighbour])
+                    fig.add_trace(go.Scattergl(
+                        x=rscx,
+                        y=rscy,
+                        mode='lines',
+                        line_width=1,
+                        line_color='red',
+                        showlegend=False
+                    ))
 
-            rscx, rscy = quadratic_bezier_curve(coords[i], np.ones(2)/4 + coords[i]/4+coords[j]/4, coords[j])
-            fig.add_trace(go.Scattergl(
-                x=rscx,
-                y=rscy,
-                mode='lines',
-                line_width=edge_width,
-                line_color='red',
-                showlegend=False
-            ))
     else:
-        for i, j in edge_list:
-            fig.add_trace(go.Scattergl(
-                x=coords[[i,j], 0],
-                y=coords[[i,j], 1],
-                mode='lines',
-                line_width=edge_width,
-                line_color='red',
-                showlegend=False
-            ))
-
+        for vertex, neighbourhood in adjacency_list.items():
+            for neighbour in neighbourhood:
+                if vertex < neighbour:
+                    (x_1, y_1), (x_2, y_2) = vcoords[vertex], vcoords[neighbour]
+                    fig.add_trace(go.Scattergl(
+                        x=(x_1, x_2),
+                        y=(y_1, y_2),
+                        mode='lines',
+                        line_width=1,
+                        line_color='red',
+                        showlegend=False
+                    ))
 
     fig.add_trace(go.Scattergl(
-        x=coords[:,0],
-        y=coords[:,1],
+        x=np.sin(2*pi*np.arange(N)/N),
+        y=np.cos(2*pi*np.arange(N)/N),
         mode='markers',
         marker_size=vertex_size,
-        marker_color='blue' if z is None else z,
+        marker_color='blue',
         showlegend=False
     ))
 

@@ -1,16 +1,17 @@
 import numpy as np
 from itertools import combinations
 import random
-from drawing import arc, radial, matrix, kamada_kawai
+import drawing
 import networkx as nx
 
 
-class Graph2:
+class Graph:
     def __init__(self, graph_data=None):
         if graph_data is None:
             # create empty graph
-            self.vertices=dict()
-            self.adjacency=dict()
+            self.vertices = dict()
+            self.adjacency = dict()
+            self.attributes = set()
 
     def __len__(self):
         return len(self.vertices)
@@ -18,19 +19,17 @@ class Graph2:
     def __getitem__(self, vertex):
         return self.adjacency[vertex]
 
-    def __contains__(self, vertex):
-        if type(element) is tuple:
-            source, target = element
+    def __contains__(self, item):
+        if type(item) is tuple:
+            source, target = item
             return target in self.adjacency[source]
         else:
-            return vertex in self.vertices
+            return item in self.vertices
 
-    def add_vertex(self, vertex=None):
+    def add_vertex(self, vertex, **attr):
         if vertex in self:
             return "Vertex already exists!"
-        if vertex is None:
-            vertex = max(self.vertices) + 1
-        self.vertices[vertex] = dict()
+        self.vertices[vertex] = dict(**attr)
         self.adjacency[vertex] = dict()
 
     def remove_vertex(self, vertex):
@@ -40,21 +39,34 @@ class Graph2:
             del self.adjacency[neighbour][vertex]
         del self.adjacency[vertex]
 
-    def add_edge(self, source, target):
+    def update_vertex(self, vertex, **attr):
+        if vertex not in self:
+            return 'Vertex does not exist!'
+        self.vertices[vertex].update(**attr)
+
+    def add_edge(self, source, target, **attr):
         if source not in self or target not in self:
             return 'Source and/or target vertex does not exist!'
         elif target in self.adjacency[source]:
             return 'Edge already exists!'
-        self.adjacency[source][target] = dict()
-        self.adjacency[target][source] = dict()
+        self.adjacency[source][target] = dict(**attr)
+        self.adjacency[target][source] = dict(**attr)
 
     def remove_edge(self, source, target):
         if source not in self or target not in self:
             return 'Source and/or target vertex does not exist!'
-        elif target in self.adjacency[source]:
+        elif (source, target) in self:
             return 'Edge already exists!'
         del self.adjacency[source][target]
         del self.adjacency[target][source]
+
+    def update_edge(self, source, target, **attr):
+        if source not in self or target not in self:
+            return 'Source and/or target vertex does not exist!'
+        elif (source, target) not in self:
+            return 'Edge does not exist!'
+        self.adjacency[source][target].update(**attr)
+        self.adjacency[target][source].update(**attr)
 
     def neighbours(self, vertex):
         if vertex not in self:
@@ -62,19 +74,33 @@ class Graph2:
         return iter(self.adjacency[vertex])
 
     def edge_list(self):
-        elist = []
+        elist = dict()
         for vertex, neighbourhood in self.adjacency.items():
-            for neighbour in neighbourhood:
+            for neighbour, attributes in neighbourhood.items():
                 if vertex < neighbour:
-                    elist.append((vertex, neighbour))
+                    elist[(vertex, neighbour)] = attributes
         return elist
 
+    def write(self, filename):
+        import csv
+        with open(filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, delimiter=' ', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            #writer.writerow(['source', 'target', 'weight'])
+            writer.writerow(['source', 'target'])
+            for vertex, neighbourhood in self.adjacency.items():
+                for neighbour, attributes in neighbourhood.items():
+                    if vertex < neighbour:
+                        writer.writerow([vertex, neighbour] + list(attributes.values()))
+
+    def draw_arc(self):
+        drawing.arc(self.adjacency)
+
+    def draw_radial(self, arcs=True):
+        drawing.radial(self.adjacency, arcs)
 
 
 
-A = Graph2()
-
-class Graph(object):
+class Graph2(object):
     def __init__(self, adjacency_list, gids=None):
         '''
         Initialize the graph defined by an adjacency list.
