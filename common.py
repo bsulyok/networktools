@@ -45,3 +45,7 @@ def edge_iterator(adjacency_list):
     for vertex, neighbourhood in adjacency_list.items():
         for neighbour, attributes in neighbourhood.items():
             yield vertex, neighbour, attributes
+
+def ienumerate(iterable):
+    for index, item in enumerate(iterable):
+        yield item, index

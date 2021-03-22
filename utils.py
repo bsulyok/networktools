@@ -61,7 +61,7 @@ def identify_components(adjacency_list):
     '''
     Identify disjunct components via a simple percolation algorithm.
     '''
-    component = {key:None for key in adjacency_list}
+    component = dict.fromkeys(adjacency_list, None)
     counter = 0
     for source in adjacency_list:
         if component[source] is not None:
@@ -83,8 +83,8 @@ def dijsktra(adjacency_list, source, target=None):
     If a target node is provided the program terminates when target is reached and only the distance between source and target is returned.
     '''
     Q = priority_queue()
-    visited = {key:False for key in adjacency_list}
-    dist = {key:inf for key in adjacency_list}
+    visited = dict.fromkeys(adjacency_list, False)
+    dist = dict.fromkeys(adjacency_list, inf)
     dist[source] = 0
     Q.push( (0, source) )
     while 0 < len(Q):

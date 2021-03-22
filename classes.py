@@ -1,6 +1,6 @@
 import drawing
 import networkx as nx
-from common import edge_iterator, priority_queue
+from common import edge_iterator, priority_queue, ienumerate
 from math import inf
 from random import random
 from utils import dijsktra, identify_components
@@ -37,6 +37,30 @@ class Graph:
     def __iter__(self):
         return edge_iterator(self.adjacency)
 
+    def __radd__(self, other):
+        if other == 0:
+            return self
+        else:
+            return self._add__(other)
+
+    def __add__(self, other):
+        if len(self) == 0:
+            return other
+        elif len(other) == 0:
+            return self
+        if len(other) < len(self):
+            other, self = self, other
+        if len(self) != max(self.vertices) + 1:
+            self.defragment()
+        relabel = {old:new for new, old in enumerate(other.vertices, len(self))}
+        for vertex in relabel.values():
+            self.add_vertex(vertex)
+        for source, target, attributes in iter(other):
+            if source < target:
+                continue
+            self.add_edge(relabel[source], relabel[target])
+        return self
+
     #####################
     # vertex operations #
     #####################
@@ -50,9 +74,13 @@ class Graph:
     def remove_vertex(self, vertex):
         if vertex not in self:
             return 'Vertex does not exist!'
-        for neighbour in self.adjacency[vertex]:
-            del self.adjacency[neighbour][vertex]
-        del self.adjacency[vertex]
+        try:
+            del self.vertices[vertex]
+            for neighbour in self.adjacency[vertex]:
+                del self.adjacency[neighbour][vertex]
+            del self.adjacency[vertex]
+        except:
+            return 'Vertex not in graph!'
 
     def update_vertex(self, vertex, **attr):
         if vertex not in self:
@@ -151,6 +179,21 @@ class Graph:
 
     def components(self):
         return identify_components(self.adjacency)
+
+    def divide(self):
+        comps = identify_components(self.adjacency)
+        for i in range(max(comps.values())+1):
+            True
+
+    def defragment(self):
+        relabel = dict(ienumerate(self.vertices))
+        for vertex in list(self.vertices.keys()):
+            if relabel[vertex] == vertex:
+                continue
+            self.vertices[relabel[vertex]] = self.vertices.pop(vertex)
+            for neighbour in self.adjacency[vertex]:
+                self.adjacency[neighbour][relabel[vertex]] = self.adjacency[neighbour].pop(vertex)
+            self.adjacency[relabel[vertex]] = self.adjacency.pop(vertex)
 
     ##################################
     # functions for testing purposes #
