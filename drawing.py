@@ -6,7 +6,7 @@ from copy import deepcopy
 from itertools import combinations
 import utils
 from math import inf, pi, sin, cos
-from common import elapsed
+from common import elapsed, edge_iterator
 
 HEIGHT = 1000
 
@@ -31,22 +31,18 @@ def semi_circle(x1, x2):
 def arc(adjacency_list):
     N = len(adjacency_list)
     vcoords = {ID:(idx/(N-1), 0) for idx, ID in enumerate(adjacency_list.keys())}
-
     fig = go.Figure()
-
-    for vertex, neighbourhood in adjacency_list.items():
-        for neighbour in neighbourhood:
-            if vertex < neighbour:
-                scx, scy = semi_circle(vcoords[vertex][0], vcoords[neighbour][0])
-                fig.add_trace(go.Scattergl(
-                    x=scx,
-                    y=scy,
-                    mode='lines',
-                    line_width=1,
-                    line_color='red',
-                    showlegend=False
-                ))
-
+    for vertex, neighbour, attributes in edge_iterator(adjacency_list):
+        if vertex < neighbour:
+            scx, scy = semi_circle(vcoords[vertex][0], vcoords[neighbour][0])
+            fig.add_trace(go.Scattergl(
+                x=scx,
+                y=scy,
+                mode='lines',
+                line_width=1,
+                line_color='red',
+                showlegend=False
+            ))
     fig.add_trace(go.Scattergl(
         x=np.arange(N)/(N-1),
         y=np.zeros(N),
@@ -56,7 +52,6 @@ def arc(adjacency_list):
         showlegend=False,
         text='a'
     ))
-
     fig.update_xaxes(tickvals=[], zeroline=False)
     fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
     fig.update_layout(height=HEIGHT, width=HEIGHT-20)
@@ -64,7 +59,6 @@ def arc(adjacency_list):
     return
 
 def quadratic_bezier_curve(p1, p2, p3):
-
     '''
     Compute the quadratic Bezier curve for the given points
     Parameters
@@ -87,37 +81,31 @@ def radial(adjacency_list, arcs=True):
     N = len(adjacency_list)
     edge_width, vertex_size = 1, 10
     vcoords = {ID:(sin(2*pi*idx/N), cos(2*pi*idx/N)) for idx, ID in enumerate(adjacency_list.keys())}
-
     fig = go.Figure()
-
     if arcs:
-        for vertex, neighbourhood in adjacency_list.items():
-            for neighbour in neighbourhood:
-                if vertex < neighbour:
-                    rscx, rscy = quadratic_bezier_curve(vcoords[vertex], (0,0), vcoords[neighbour])
-                    fig.add_trace(go.Scattergl(
-                        x=rscx,
-                        y=rscy,
-                        mode='lines',
-                        line_width=1,
-                        line_color='red',
-                        showlegend=False
-                    ))
-
+        for vertex, neighbour, attributes in edge_iterator(adjacency_list):
+            if vertex < neighbour:
+                rscx, rscy = quadratic_bezier_curve(vcoords[vertex], (0,0), vcoords[neighbour])
+                fig.add_trace(go.Scattergl(
+                    x=rscx,
+                    y=rscy,
+                    mode='lines',
+                    line_width=1,
+                    line_color='red',
+                    showlegend=False
+                ))
     else:
-        for vertex, neighbourhood in adjacency_list.items():
-            for neighbour in neighbourhood:
-                if vertex < neighbour:
-                    (x_1, y_1), (x_2, y_2) = vcoords[vertex], vcoords[neighbour]
-                    fig.add_trace(go.Scattergl(
-                        x=(x_1, x_2),
-                        y=(y_1, y_2),
-                        mode='lines',
-                        line_width=1,
-                        line_color='red',
-                        showlegend=False
-                    ))
-
+        for vertex, neighbour, attributes in edge_iterator(adjacency_list):
+            if vertex < neighbour:
+                (x_1, y_1), (x_2, y_2) = vcoords[vertex], vcoords[neighbour]
+                fig.add_trace(go.Scattergl(
+                    x=(x_1, x_2),
+                    y=(y_1, y_2),
+                    mode='lines',
+                    line_width=1,
+                    line_color='red',
+                    showlegend=False
+                ))
     fig.add_trace(go.Scattergl(
         x=np.sin(2*pi*np.arange(N)/N),
         y=np.cos(2*pi*np.arange(N)/N),
@@ -126,7 +114,6 @@ def radial(adjacency_list, arcs=True):
         marker_color='blue',
         showlegend=False
     ))
-
     fig.update_xaxes(tickvals=[], zeroline=False)
     fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
     fig.update_layout(height=HEIGHT, width=HEIGHT-20)
@@ -215,11 +202,12 @@ def optimize_radial(adjacency):
     return perm
 
 def matrix(adjacency_list):
-    adjacency_matrix = utils.list2mat(adjacency_list)
-    fig = go.Figure(data=go.Heatmap(
-        z=adjacency_matrix[::-1].astype(int),
-        showscale=False
-        ))
+    N = len(adjacency_list)
+    adjacency_matrix = np.zeros((N,N))
+    rev_dict = {ID:idx for idx, ID in enumerate(adjacency_list.keys())}
+    for vertex, neighbour, attributes in edge_iterator(adjacency_list):
+        adjacency_matrix[rev_dict[vertex]][rev_dict[neighbour]] = 1
+    fig = go.Figure(data=go.Heatmap(z=adjacency_matrix[::-1].astype(int), showscale=False))
     fig.update_yaxes(tickvals=[], scaleanchor='x')
     fig.update_xaxes(tickvals=[])
     fig.update_layout(width=HEIGHT-20, height=HEIGHT)

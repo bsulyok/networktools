@@ -27,3 +27,21 @@ def elapsed(func, reps=1, **kwargs):
 
 def inverse_permutation(perm):
     return [i for i, j in sorted(enumerate(perm), key=lambda i_j: i_j[1])]
+
+def edge_iterator(adjacency_list):
+    '''
+    Generator object yielding edges from the provided adjacency list.
+    Parameters
+    ----------
+    adjacency_list : dict of dicts
+    Returns
+    vertex : int
+        Source vertex.
+    neighbour : int
+        Target vertex.
+    attributes : dict
+        Attributes of the given edge.
+    '''
+    for vertex, neighbourhood in adjacency_list.items():
+        for neighbour, attributes in neighbourhood.items():
+            yield vertex, neighbour, attributes

@@ -3,6 +3,7 @@ from itertools import combinations
 import random
 import drawing
 import networkx as nx
+from common import edge_iterator
 
 
 class Graph:
@@ -73,14 +74,6 @@ class Graph:
             return 'Vertex does not exist!'
         return iter(self.adjacency[vertex])
 
-    def edge_list(self):
-        elist = dict()
-        for vertex, neighbourhood in self.adjacency.items():
-            for neighbour, attributes in neighbourhood.items():
-                if vertex < neighbour:
-                    elist[(vertex, neighbour)] = attributes
-        return elist
-
     def write(self, filename):
         import csv
         with open(filename, 'w', newline='') as csvfile:
@@ -92,13 +85,17 @@ class Graph:
                     if vertex < neighbour:
                         writer.writerow([vertex, neighbour] + list(attributes.values()))
 
+    def edge_list(self):
+        return edge_iterator(self.adjacency)
+
     def draw_arc(self):
         drawing.arc(self.adjacency)
 
     def draw_radial(self, arcs=True):
         drawing.radial(self.adjacency, arcs)
 
-
+    def draw_matrix(self):
+        drawing.matrix(self.adjacency)
 
 class Graph2(object):
     def __init__(self, adjacency_list, gids=None):
@@ -162,10 +159,3 @@ class Graph2(object):
 
     def kamada_kawai(self):
         kamada_kawai(self.adjacency)
-
-
-
-
-
-
-
