@@ -67,21 +67,6 @@ def erdos_renyi_graph(N, edge_param=None):
 
     return G
 
-def SBMP(s):
-    K = len(s)
-    N = sum(s)
-    scale, exp_degree = 0.1, N**(1/2)
-    P = [[0 for j in range(K)] for i in range(K)]
-    for i, j in combinations_with_replacement(range(K), r=2):
-        prob = random.normalvariate(exp_degree/((1-scale)*s[i]+scale*N), 0.2)
-        if i == j:
-            P[i][i] = prob
-        else:
-            prob2 = abs(random.normalvariate(prob, 0.05))
-            P[i][j] = prob2
-            P[j][i] = prob2
-    return P
-
 def stochastic_block_model(s, P=None):
     '''
     Create a random graph with predetermined community structure.
@@ -143,31 +128,23 @@ def barabasi_albert_graph(N, m):
     if type(m) is not int or m < 1 or N < 2*m:
         raise TypeError('m must be a positive integer not larger than N/2')
 
-    G = erdos_renyi_graph(2*m, m/(2*m-1))
-
-
     clique = 2*m
-
-    adjacency_list = erdos_renyi_graph(clique, clique**2 // 4, output='list')
-    stubs = np.concatenate(([len(i) for i in adjacency_list], np.zeros(N-clique)))
-    stubs[:clique] += 1
-    stubs = np.concatenate((np.ones(clique), np.zeros(N-clique)))
-    stub_sum = sum(stubs)
-    for new_vertex in range(clique, N):
-        old_vertices = np.random.choice(new_vertex, size=m, replace=False, p=stubs[:new_vertex]/stub_sum)
+    G = erdos_renyi_graph(clique, m/(clique-1))
+    for i in range(clique, N):
+        G.add_vertex(i)
+    degree = np.array(list(G.degree().values()) + [0 for _ in range(clique, N)])
+    degree_sum = sum(degree)
+    for newcomer in range(clique, N):
+        G.add_vertex(newcomer)
+        old_vertices = np.random.choice(newcomer, size=m, replace=False, p=degree[:newcomer]/degree_sum)
         for old_vertex in old_vertices:
-            adjacency_list[old_vertex].append(new_vertex)
-        adjacency_list.append(list(old_vertices))
-        stubs[old_vertices] += 1
-        stubs[new_vertex] += m
-        stub_sum += 2*m
-    return Graph(adjacency_list)
+            G.add_edge(newcomer, old_vertex)
+        degree[old_vertices] += 1
+        degree[newcomer] = m
+        degree_sum += 2*m
+    return G
 
 def regular_ring_lattice(N, k):
-    return [[j%N for j in range(i-k//2, i+k//2+1) if j!=i] for i in range(N)]
-
-def watts_stogratz_graph(N, k=2, beta=0.5, output='graph'):
-
     '''
     Create a regular ring lattice.
     Parameters
@@ -178,25 +155,43 @@ def watts_stogratz_graph(N, k=2, beta=0.5, output='graph'):
         Coordination number or the number of connections to nearest neighbours.
     Returns
     -------
-    adjacency_list : list of lists
-        Adjacency list containing edge indices in a concise form.
+    G : Graph
     '''
+    G = empty_graph(N)
+    for vertex in range(N):
+        for offset in range(k//2):
+            neighbour = (vertex+offset+1)%N
+            G.add_edge(vertex, neighbour)
+    return G
 
+def watts_stogratz_graph(N, k=2, beta=0.5, output='graph'):
+    '''
+    Create a random graph according to the Watts-Stograts model.
+    Parameters
+    ----------
+    N : int
+        Number of vertices. Must be larger than one.
+    k : int
+        Coordination number or the number of connections to nearest neighbours.
+    Returns
+    -------
+    G : Graph
+    '''
     if N < 3:
         raise TypeError('This model requires at least three vertices.')
     if type(k) is not int or k%2 == 1 or k < 2 or N-2 < k:
         raise TypeError('Coordination number must be a positive even integer smaller than N-2!')
     if N-1 < k:
         raise TypeError('Coordination number "k" is too high.')
-
+    G = regular_ring_lattice(N, k)
     V = list(range(N))
-    adjacency_list = regular_ring_lattice(N, k)
-    for i in range(N):
-        for j in range(i+1, i+k//2+1):
-            j = j%N
-            if random.random() < beta and len(adjacency_list[i]) < N-1:
-                l = j
-                while l == i or l in adjacency_list[i]:
-                    l = random.choice(V)
-                rewire_edge(adjacency_list, (i,j), (i,l))
-    return Graph(adjacency_list)
+    for vertex, neighbourhood in G.adjacency.items():
+        for offset in range(k//2):
+            neighbour = (vertex+offset+1)%N
+            if random.random() < beta and len(neighbourhood) < N-1:
+                new_neighbour = neighbour
+                while new_neighbour == neighbour or new_neighbour == vertex or new_neighbour in neighbourhood:
+                    new_neighbour = random.choice(V)
+                G.remove_edge(vertex, neighbour)
+                G.add_edge(vertex, new_neighbour)
+    return G

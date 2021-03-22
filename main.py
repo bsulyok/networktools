@@ -1,11 +1,9 @@
 import numpy as np
 import random
-import timeit
 import classes
-
 import models
 import drawing
-from utils import *
+import utils
 
 def main():
     pass

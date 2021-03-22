@@ -1,31 +1,45 @@
-import numpy as np
-from itertools import combinations
-import random
 import drawing
 import networkx as nx
-from common import edge_iterator
-
+from common import edge_iterator, priority_queue
+from math import inf
+from random import random
+from utils import dijsktra, identify_components
 
 class Graph:
+
+    ###################
+    # magic functions #
+    ###################
+
     def __init__(self, graph_data=None):
         if graph_data is None:
             # create empty graph
             self.vertices = dict()
             self.adjacency = dict()
             self.attributes = set()
+            self.weighted = False
 
     def __len__(self):
         return len(self.vertices)
 
-    def __getitem__(self, vertex):
-        return self.adjacency[vertex]
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return self.vertices[item]
+        elif isinstance(item, tuple):
+            return self.adjacency[item[0]][item[1]]
 
     def __contains__(self, item):
-        if type(item) is tuple:
-            source, target = item
-            return target in self.adjacency[source]
-        else:
+        if isinstance(item, int):
             return item in self.vertices
+        elif isinstance(item, (tuple, list)):
+            return item[1] in self.adjacency[item[0]]
+
+    def __iter__(self):
+        return edge_iterator(self.adjacency)
+
+    #####################
+    # vertex operations #
+    #####################
 
     def add_vertex(self, vertex, **attr):
         if vertex in self:
@@ -45,34 +59,38 @@ class Graph:
             return 'Vertex does not exist!'
         self.vertices[vertex].update(**attr)
 
+    ###################
+    # edge operations #
+    ###################
+
     def add_edge(self, source, target, **attr):
-        if source not in self or target not in self:
-            return 'Source and/or target vertex does not exist!'
-        elif target in self.adjacency[source]:
-            return 'Edge already exists!'
-        self.adjacency[source][target] = dict(**attr)
-        self.adjacency[target][source] = dict(**attr)
+        #if source not in self or target not in self:
+        #    return 'Source and/or target vertex does not exist!'
+        #elif target in self.adjacency[source]:
+        #    rIeturn 'Edge already exists!'
+        if source in self and target in self and (source, target) not in self:
+            self.adjacency[source][target] = dict(**attr)
+            self.adjacency[target][source] = dict(**attr)
+        else:
+            return 'Invalid source and/or target'
 
     def remove_edge(self, source, target):
-        if source not in self or target not in self:
-            return 'Source and/or target vertex does not exist!'
-        elif (source, target) in self:
-            return 'Edge already exists!'
-        del self.adjacency[source][target]
-        del self.adjacency[target][source]
+        try:
+            del self.adjacency[source][target]
+            del self.adjacency[target][source]
+        except KeyError:
+            return 'Edge does not exist!'
 
     def update_edge(self, source, target, **attr):
-        if source not in self or target not in self:
-            return 'Source and/or target vertex does not exist!'
-        elif (source, target) not in self:
-            return 'Edge does not exist!'
-        self.adjacency[source][target].update(**attr)
-        self.adjacency[target][source].update(**attr)
+        if source in self and target in self and (source, target) in self:
+            self.adjacency[source][target].update(**attr)
+            self.adjacency[target][source].update(**attr)
+        else:
+            return 'Invalid source and/or target'
 
-    def neighbours(self, vertex):
-        if vertex not in self:
-            return 'Vertex does not exist!'
-        return iter(self.adjacency[vertex])
+    ###################
+    # writing to file #
+    ###################
 
     def write(self, filename):
         import csv
@@ -85,8 +103,24 @@ class Graph:
                     if vertex < neighbour:
                         writer.writerow([vertex, neighbour] + list(attributes.values()))
 
-    def edge_list(self):
+    ######################
+    # topology iterators #
+    ######################
+
+    def edges(self):
         return edge_iterator(self.adjacency)
+
+    def vertices(self):
+        return iter(self.iterators)
+
+    def neighbours(self, vertex):
+        if vertex not in self:
+            return 'Vertex does not exist!'
+        return iter(self.adjacency[vertex].items())
+
+    ###################
+    # drawing methods #
+    ###################
 
     def draw_arc(self):
         drawing.arc(self.adjacency)
@@ -97,65 +131,32 @@ class Graph:
     def draw_matrix(self):
         drawing.matrix(self.adjacency)
 
-class Graph2(object):
-    def __init__(self, adjacency_list, gids=None):
-        '''
-        Initialize the graph defined by an adjacency list.
-        '''
-        self.N = len(adjacency_list)
-        self.V = tuple(range(self.N))
-        self.adjacency = adjacency_list
-        self.update_edges()
-        self.update_degree()
-        self.update_edge_number()
 
-        # not implemented yet
-        self.gids = None if gids is None else gids
-        self.directed = False
+    ##############################
+    # graph theoretical distance #
+    ##############################
 
-    def update(self, wrt_adjacency=True):
-        if wrt_adjacency:
-            self.update_edges()
+    def distance(self, source=None, target=None):
+        if source is not None:
+            return dijsktra(self.adjacency, source, target)
         else:
-            self.update_adjacency()
-        self.update_degree()
+            return {source:dijsktra(self.adjacency, source) for source in self.adjacency}
 
-    def update_edges(self):
-        '''
-        Update the edge list w.r.t. the adjacency list.
-        '''
-        self.edges = tuple((i,j) for i, neigh in enumerate(self.adjacency) for j in neigh if j < i)
+    ########
+    # misc #
+    ########
 
-    def update_adjacency(self):
-        '''
-        Update the adjacency list w.r.t. the edge list.
-        '''
-        adjacency = [[] for _ in self.V]
-        for i, j in self.edges:
-            adjacency[i].append(j)
-            adjacency[j].append(i)
-        self.adjacency = adjacency
+    def degree(self):
+        return {vertex:len(neighbourhood) for vertex, neighbourhood in self.adjacency.items()}
 
-    def update_degree(self):
-        '''
-        Update the degree w.r.t. the adjacency list.
-        '''
-        self.degree = tuple([len(neighbourhood) for neighbourhood in self.adjacency])
+    def components(self):
+        return identify_components(self.adjacency)
 
-    def update_edge_number(self):
-        '''
-        Update edge number w.r.t. the edge list.
-        '''
-        self.edgenum = len(self.edges)
+    ##################################
+    # functions for testing purposes #
+    ##################################
 
-    def draw_arc(self):
-        arc(self.adjacency, self.edges)
-
-    def draw_radial(self):
-        radial(self.adjacency, self.edges)
-
-    def draw_matrix(self):
-        matrix(self.adjacency)
-
-    def kamada_kawai(self):
-        kamada_kawai(self.adjacency)
+    def genweight(self):
+        self.weighted = True
+        for _, _, attributes in self.edges():
+            attributes.update({'weight':random()})
