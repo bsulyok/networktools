@@ -4,6 +4,7 @@ import classes
 import models
 import drawing
 import utils
+import networkx as nx
 
 def main():
     pass

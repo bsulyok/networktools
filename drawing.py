@@ -17,9 +17,11 @@ def arc(adjacency_list):
             fig.add_trace(go.Scattergl(
                 x=scx,
                 y=scy,
-                mode='lines',
-                line_width=1,
-                line_color='red',
+                mode='markers',
+                #mode='lines',
+                #line_width=1,
+                #line_color='red',
+                marker_color=np.arange(len(scx)),
                 showlegend=False
             ))
     fig.add_trace(go.Scattergl(
@@ -37,7 +39,7 @@ def arc(adjacency_list):
     fig.show()
     return
 
-def radial(adjacency_list, arcs=True):
+def circular(adjacency_list, arcs=True):
     N = len(adjacency_list)
     edge_width, vertex_size = 1, 10
     vcoords = {ID:(sin(2*pi*idx/N), cos(2*pi*idx/N)) for idx, ID in enumerate(adjacency_list.keys())}

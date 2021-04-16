@@ -2,9 +2,9 @@ import numpy as np
 import warnings
 from itertools import combinations, combinations_with_replacement
 import random
-from classes import Graph
+from classes import Graph, DiGraph
 
-def empty_graph(N):
+def empty_graph(N, directed=False):
     '''
     Create an empty graph of given size.
     Parameters
@@ -16,12 +16,12 @@ def empty_graph(N):
     G : Graph
         Generated empty graph
     '''
-    G = Graph()
+    G = Graph() if not directed else DiGraph()
     for i in range(N):
         G.add_vertex(i)
     return G
 
-def erdos_renyi_graph(N, edge_param=None):
+def erdos_renyi_graph(N, edge_param=None, directed=False):
     '''
     Create an Erdos-Renyi random graph.
     Parameters
@@ -42,9 +42,9 @@ def erdos_renyi_graph(N, edge_param=None):
         raise TypeError('This model requires at least two vertices.')
 
     if edge_param is None:
-        edge_param = 3/(N-1)
+        edge_param = 3/(N-1) if not directed else 3/2/(N-1)
 
-    G = empty_graph(N)
+    G = empty_graph(N, directed)
 
     # adjacency defined by edge probability
     if 0 < edge_param < 1:

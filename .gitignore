@@ -1,1 +1,6 @@
-__pycache__
+# Byte-compiled, optimized and DLLa files
+__pycache__/
+*.py[cod]
+*$py.class
+.archive/*
+
