@@ -77,7 +77,7 @@ def identify_components(adjacency_list):
                     stack.add(neighbour)
     return component
 
-def dijsktra(adjacency_list, source, target=None):
+def dijsktra(adjacency_list, source, target=None, weight_attribute='weight'):
     '''
     Find the graph theoretical distance using the Dijsktra algorithm.
     If a target node is provided the program terminates when target is reached and only the distance between source and target is returned.
@@ -97,7 +97,7 @@ def dijsktra(adjacency_list, source, target=None):
         for neighbour, attributes in adjacency_list[vertex].items():
             if visited[neighbour]:
                 continue
-            neighbour_dist = vertex_dist + attributes.get('weight', 1)
+            neighbour_dist = vertex_dist + attributes.get(weight_attribute, 1)
             if neighbour_dist < dist[neighbour]:
                 dist[neighbour] = neighbour_dist
                 Q.push( (neighbour_dist, neighbour) )

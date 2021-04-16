@@ -1,6 +1,7 @@
 import numpy as np
 from itertools import combinations
 from math import inf, pi, sin, cos
+import plotly.graph_objects as go
 
 HEIGHT = 1000
 
@@ -21,6 +22,33 @@ def semi_circle(x1, x2):
         X.append(center+radius*cos(angle))
         Y.append(radius*sin(angle))
     return X, Y
+
+def circular_arc(x1, y1, x2, y2, number_of_samples=100):
+    x_center = ( y1*(x2*x2 + y2*y2 + 1) - y2*(x1*x1 + y1*y1 +1) ) / (x2*y1 - x1*y2) / 2
+    y_center = ( x2*(x1*x1 + y1*y1 + 1) - x1*(x2*x2 + y2*y2 +1) ) / (x2*y1 - x1*y2) / 2
+    radius = np.sqrt(x_center**2 + y_center**2 - 1)
+    start_angle = np.arctan2(x1 - x_center, y1 - y_center)
+    end_angle = np.arctan2(x2 - x_center, y2 - y_center)
+    if np.pi < start_angle-end_angle:
+        start_angle -= 2*np.pi
+    elif np.pi < end_angle - start_angle:
+        end_angle -= 2*np.pi
+    phi = np.linspace(start_angle, end_angle, number_of_samples)
+    return x_center + radius * np.sin(phi), y_center + radius * np.cos(phi)
+
+def edge_trace(x_coords, y_coords, width=1, color='black'):
+    if isinstance(color, str):
+        return go.Scattergl(x=x_coords, y=y_coords, mode='lines', line_width=width, line_color=color, showlegend=False)
+    elif isinstance(color, int) and color < len(x_coords):
+        div = (np.arange(color+1)*(len(x_coords)/color)).astype(int)
+        traces = []
+        for i in range(color):
+            curcolor='rgb(0,{},{})'.format(int(255*i/(color-1)), int(255*(1-i/(color-1))))
+            traces.append(go.Scattergl(x=x_coords[div[i]:div[i+1]+1], y=y_coords[div[i]:div[i+1]+1], mode='lines', line_width=width, line_color=curcolor, showlegend=False))
+        return traces
+
+def line(x1, y1, x2, y2, number_of_samples=100):
+    return np.linspace(x1, x2, number_of_samples), np.linspace(y1, y2, number_of_samples)
 
 def quadratic_bezier_curve(p1, p2, p3):
     '''
@@ -97,3 +125,12 @@ def kamada_kawai(adjacency_list, graph_distance):
             )
     return optres
 
+def get_ellipse_path(center=(0,0), start_angle=0, end_angle=2*np.pi, radius_x=1, radius_y=1):
+    t = np.linspace(start_angle, end_angle, NUM_OF_SAMPLES)
+    xs = center[0] + radius_x * np.cos(t)
+    ys = center[1] + radius_y * np.sin(t)
+
+    coords_as_str = (f'{x},{y}' for x,y in zip(xs, ys))
+    path = ' L '.join(coords_as_str)
+
+    return 'M ' + path

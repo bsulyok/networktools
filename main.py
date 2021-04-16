@@ -7,7 +7,8 @@ import utils
 import networkx as nx
 
 def main():
-    pass
+    G = models.popularity_similarity_optimisation_model(1000, 2, beta=0.9)
+    G.draw_hyperbolic(euclidean=False)
 
 if __name__ == "__main__":
     main()

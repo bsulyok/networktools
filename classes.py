@@ -166,6 +166,9 @@ class Graph:
     def draw_matrix(self):
         drawing.matrix(self._successor)
 
+    def draw_hyperbolic(self, euclidean=False):
+        drawing.hyperbolic(self._successor, self._vertices, euclidean)
+
 
     ##############################
     # graph theoretical distance #

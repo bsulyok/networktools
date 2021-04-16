@@ -4,6 +4,9 @@ from itertools import combinations, combinations_with_replacement
 import random
 from classes import Graph, DiGraph
 
+
+
+
 def empty_graph(N, directed=False):
     '''
     Create an empty graph of given size.
@@ -195,3 +198,88 @@ def watts_stogratz_graph(N, k=2, beta=0.5, output='graph'):
                 G.remove_edge(vertex, neighbour)
                 G.add_edge(vertex, new_neighbour)
     return G
+
+def hyperbolic_distance(r_source, angle_source, r_target, angle_target, curv=1):
+    angular_difference = np.pi - abs( np.pi - abs( angle_source - angle_target ) )
+    comp1 =  np.cosh( curv * r_source ) * np.cosh( curv * r_target )
+    comp2 =  np.sinh( curv * r_source ) * np.sinh( curv * r_target ) * np.cos(angular_difference)
+    return np.arccosh( comp1 - comp2 ) / curv
+
+def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
+
+    radial_coordinate = 2/curv*np.log(np.arange(1,N+1))
+    angular_coordinate = 2*np.pi*np.random.rand(N)
+
+    if T != 0 and beta == 1:
+        cutoff = radial_coordinate - 2 / curv * np.log( T / np.sin( T * np.pi ) * curv * radial_coordinate / m )
+    elif T !=0 and beta != 1:
+        cutoff = radial_coordinate - 2 / curv * np.log( T / np.sin( T * np.pi ) * ( 1 - np.exp( - curv / 2 * (1-beta) * radial_coordinate ) ) / m / (1-beta) )
+
+    G = empty_graph(N)
+    G = Graph()
+    for i, (r, angle) in enumerate(zip(radial_coordinate, angular_coordinate)):
+        G.add_vertex(i, r=r, angle=angle)
+
+    for i in range(N):
+        radial_coordinate[:i] = beta * radial_coordinate[:i] + (1-beta) * radial_coordinate[i]
+
+        if i <= m:
+            for j in range(i):
+                G.add_edge(i, j)
+            continue
+
+        distance = hyperbolic_distance(radial_coordinate[i], angular_coordinate[i], radial_coordinate[:i], angular_coordinate[:i], curv)
+
+        if T == 0:
+            for j in distance.argsort()[:m]:
+                G.add_edge(i, j)
+
+        else:
+            edge_probability = 1 / ( 1 + np.exp( curv / 2 / T * (distance - cutoff[i]) ) )
+            for j in np.where(np.random.rand(i) < edge_probability)[0]:
+                G.add_edge(i, j)
+
+    return G
+
+    def extended_popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
+
+    ar = np.arange(N)
+    radial_coordinate = 2/curv*np.log(np.arange(1,N+1))
+    angular_coordinate = 2*np.pi*np.random.rand(N)
+
+    if T != 0 and beta == 1:
+        cutoff = radial_coordinate - 2 / curv * np.log( T / np.sin( T * np.pi ) * curv * radial_coordinate / m )
+    elif T !=0 and beta != 1:
+        cutoff = radial_coordinate - 2 / curv * np.log( T / np.sin( T * np.pi ) * ( 1 - np.exp( - curv / 2 * (1-beta) * radial_coordinate ) ) / m / (1-beta) )
+
+    G = empty_graph(N)
+    G = Graph()
+    for i, (r, angle) in enumerate(zip(radial_coordinate, angular_coordinate)):
+        G.add_vertex(i, r=r, angle=angle)
+
+    for i in range(N):
+        radial_coordinate[:i] = beta * radial_coordinate[:i] + (1-beta) * radial_coordinate[i]
+
+        if i <= m:
+            for j in range(i):
+                G.add_edge(i, j)
+            continue
+
+        distance = hyperbolic_distance(radial_coordinate[i], angular_coordinate[i], radial_coordinate[:i], angular_coordinate[:i], curv)
+
+        if T == 0:
+            for j in distance.argsort()[:m]:
+                G.add_edge(i, j)
+
+        else:
+            edge_probability = 1 / ( 1 + np.exp( curv / 2 / T * (distance - cutoff[i]) ) )
+            for j in np.where(np.random.rand(i) < edge_probability)[0]:
+                G.add_edge(i, j)
+
+    return G
+
+ER = erdos_renyi_graph
+SBM = stochastic_block_model
+BA = barabasi_albert_graph
+PSO = popularity_similarity_optimisation_model
+EPSO = extended_popularity_similarity_optimisation_model
