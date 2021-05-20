@@ -79,8 +79,8 @@ def identify_components(adjacency_list):
 
 def dijsktra(adjacency_list, source, target=None, weight_attribute='weight'):
     '''
-    Find the graph theoretical distance using the Dijsktra algorithm.
-    If a target node is provided the program terminates when target is reached and only the distance between source and target is returned.
+    Find the graph theoretical distance using Dijsktra's algorithm.
+    If a target vertex is provided the program terminates when the target is reached and only the distance between the source and the target is returned.
     '''
     Q = priority_queue()
     visited = dict.fromkeys(adjacency_list, False)
@@ -89,7 +89,7 @@ def dijsktra(adjacency_list, source, target=None, weight_attribute='weight'):
     Q.push( (0, source) )
     while 0 < len(Q):
         vertex_dist, vertex = Q.pop()
-        if target is not None and vertex == target:
+        if vertex == target:
             return vertex_dist
         if visited[vertex]:
             continue
@@ -102,3 +102,21 @@ def dijsktra(adjacency_list, source, target=None, weight_attribute='weight'):
                 dist[neighbour] = neighbour_dist
                 Q.push( (neighbour_dist, neighbour) )
     return dist
+
+def minimal_depth_child_search(adjacency_list, root=0):
+    '''
+    Find the system of ascendancy in a minimal depth tree rooted at root of the provided graph.
+    '''
+    distance_from_root = dijsktra(adjacency_list, root)
+    if max(distance_from_root.values()) is inf:
+        raise TypeError('The graph is not connected!')
+    children = {vertex:list() for vertex in adjacency_list}
+    for vertex, neighbours in adjacency_list.items():
+        if vertex is root:
+            continue
+        parent = None
+        for neighbour in neighbours:
+            if parent is None or distance_from_root[neighbour] < distance_from_root[parent]:
+                parent = neighbour
+        children[parent].append(vertex)
+    return children

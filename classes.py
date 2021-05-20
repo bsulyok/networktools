@@ -99,6 +99,11 @@ class Graph:
         self._vertices[vertex] = dict(**attr)
         self._adjacency[vertex] = dict()
 
+    def update_vertex(self, vertex, **attr):
+        if vertex not in self._vertices:
+            return 'Vertex does not exist!'
+        self._vertices[vertex].update(**attr)
+
     def remove_vertex(self, vertex):
         if vertex not in self._vertices:
             return 'Vertex does not exist!'
@@ -160,8 +165,8 @@ class Graph:
     def draw_arc(self):
         drawing.arc(self._successor)
 
-    def draw_circular(self, arcs=True):
-        drawing.circular(self._successor, arcs)
+    def draw_circular(self, euclidean=False):
+        drawing.circular(self._successor, euclidean)
 
     def draw_matrix(self):
         drawing.matrix(self._successor)

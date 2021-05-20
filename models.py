@@ -4,9 +4,6 @@ from itertools import combinations, combinations_with_replacement
 import random
 from classes import Graph, DiGraph
 
-
-
-
 def empty_graph(N, directed=False):
     '''
     Create an empty graph of given size.
@@ -217,8 +214,8 @@ def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
 
     G = empty_graph(N)
     G = Graph()
-    for i, (r, angle) in enumerate(zip(radial_coordinate, angular_coordinate)):
-        G.add_vertex(i, r=r, angle=angle)
+    for i, (r, phi) in enumerate(zip(radial_coordinate, angular_coordinate)):
+        G.add_vertex(i, r=r, phi=phi)
 
     for i in range(N):
         radial_coordinate[:i] = beta * radial_coordinate[:i] + (1-beta) * radial_coordinate[i]
@@ -241,8 +238,7 @@ def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
 
     return G
 
-    def extended_popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
-
+def extended_popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
     ar = np.arange(N)
     radial_coordinate = 2/curv*np.log(np.arange(1,N+1))
     angular_coordinate = 2*np.pi*np.random.rand(N)
@@ -254,8 +250,8 @@ def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
 
     G = empty_graph(N)
     G = Graph()
-    for i, (r, angle) in enumerate(zip(radial_coordinate, angular_coordinate)):
-        G.add_vertex(i, r=r, angle=angle)
+    for i, (r, phi) in enumerate(zip(radial_coordinate, angular_coordinate)):
+        G.add_vertex(i, r=r, phi=phi)
 
     for i in range(N):
         radial_coordinate[:i] = beta * radial_coordinate[:i] + (1-beta) * radial_coordinate[i]
@@ -278,6 +274,26 @@ def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
 
     return G
 
+def regular_tree(degree=3, max_depth=4):
+    if not isinstance(degree, int) or degree < 3:
+        raise TypeError('Degree parameter must be an integer larger than or equal to 3.')
+
+    if not isinstance(max_depth, int) or max_depth < 1:
+        raise TypeError('Depth parameter must be an integer larger than or equal to 1.')
+
+    G = empty_graph(degree + 1)
+    for root_child in range(1, degree + 1):
+        G.add_edge(0, root_child)
+
+    graph_size = degree + 1
+    for vertex in range(1, int(1 + degree*((degree-1)**(max_depth-1) - 1 ) / (degree - 2))):
+        for child in range(graph_size, graph_size + degree - 1):
+            G.add_vertex(child)
+            G.add_edge(vertex, child)
+        graph_size += degree - 1
+
+    return G
+        
 ER = erdos_renyi_graph
 SBM = stochastic_block_model
 BA = barabasi_albert_graph

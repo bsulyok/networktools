@@ -23,7 +23,20 @@ def semi_circle(x1, x2):
         Y.append(radius*sin(angle))
     return X, Y
 
-def circular_arc(x1, y1, x2, y2, number_of_samples=100):
+def circular_arc(p1, p2, number_of_samples=100):
+    center = ( p1 * (1 + p2*p2.conjugate()) - p2 * (1 + p1*p1.conjugate()) ) / ( p1 * p2.conjugate() - p1.conjugate() * p2 )
+    radius = np.sqrt(center*center.conjugate() - 1)
+    start_angle = np.angle(p1-center)
+    end_angle = np.angle(p2-center)
+    if np.pi < start_angle-end_angle:
+        start_angle -= 2*np.pi
+    elif np.pi < end_angle - start_angle:
+        end_angle -= 2*np.pi
+    phi = np.linspace(start_angle, end_angle, number_of_samples)
+    arc = center + radius * np.exp(1j * phi)
+    return arc
+
+def circular_arc2(x1, y1, x2, y2, number_of_samples=100):
     x_center = ( y1*(x2*x2 + y2*y2 + 1) - y2*(x1*x1 + y1*y1 +1) ) / (x2*y1 - x1*y2) / 2
     y_center = ( x2*(x1*x1 + y1*y1 + 1) - x1*(x2*x2 + y2*y2 +1) ) / (x2*y1 - x1*y2) / 2
     radius = np.sqrt(x_center**2 + y_center**2 - 1)
@@ -47,8 +60,8 @@ def edge_trace(x_coords, y_coords, width=1, color='black'):
             traces.append(go.Scattergl(x=x_coords[div[i]:div[i+1]+1], y=y_coords[div[i]:div[i+1]+1], mode='lines', line_width=width, line_color=curcolor, showlegend=False))
         return traces
 
-def line(x1, y1, x2, y2, number_of_samples=100):
-    return np.linspace(x1, x2, number_of_samples), np.linspace(y1, y2, number_of_samples)
+def line(p1, p2, number_of_samples=100):
+    return np.linspace(p1, p2, number_of_samples)
 
 def quadratic_bezier_curve(p1, p2, p3):
     '''

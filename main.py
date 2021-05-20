@@ -5,10 +5,11 @@ import models
 import drawing
 import utils
 import networkx as nx
+import embedding_tools
 
 def main():
-    G = models.popularity_similarity_optimisation_model(1000, 2, beta=0.9)
-    G.draw_hyperbolic(euclidean=False)
+    G = models.regular_tree(3,3)
+    G.draw_matrix()
 
 if __name__ == "__main__":
-    main()
+    G = main()
