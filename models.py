@@ -238,42 +238,6 @@ def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
 
     return G
 
-def extended_popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
-    ar = np.arange(N)
-    radial_coordinate = 2/curv*np.log(np.arange(1,N+1))
-    angular_coordinate = 2*np.pi*np.random.rand(N)
-
-    if T != 0 and beta == 1:
-        cutoff = radial_coordinate - 2 / curv * np.log( T / np.sin( T * np.pi ) * curv * radial_coordinate / m )
-    elif T !=0 and beta != 1:
-        cutoff = radial_coordinate - 2 / curv * np.log( T / np.sin( T * np.pi ) * ( 1 - np.exp( - curv / 2 * (1-beta) * radial_coordinate ) ) / m / (1-beta) )
-
-    G = empty_graph(N)
-    G = Graph()
-    for i, (r, phi) in enumerate(zip(radial_coordinate, angular_coordinate)):
-        G.add_vertex(i, r=r, phi=phi)
-
-    for i in range(N):
-        radial_coordinate[:i] = beta * radial_coordinate[:i] + (1-beta) * radial_coordinate[i]
-
-        if i <= m:
-            for j in range(i):
-                G.add_edge(i, j)
-            continue
-
-        distance = hyperbolic_distance(radial_coordinate[i], angular_coordinate[i], radial_coordinate[:i], angular_coordinate[:i], curv)
-
-        if T == 0:
-            for j in distance.argsort()[:m]:
-                G.add_edge(i, j)
-
-        else:
-            edge_probability = 1 / ( 1 + np.exp( curv / 2 / T * (distance - cutoff[i]) ) )
-            for j in np.where(np.random.rand(i) < edge_probability)[0]:
-                G.add_edge(i, j)
-
-    return G
-
 def regular_tree(degree=3, max_depth=4):
     if not isinstance(degree, int) or degree < 3:
         raise TypeError('Degree parameter must be an integer larger than or equal to 3.')
@@ -298,4 +262,3 @@ ER = erdos_renyi_graph
 SBM = stochastic_block_model
 BA = barabasi_albert_graph
 PSO = popularity_similarity_optimisation_model
-EPSO = extended_popularity_similarity_optimisation_model

@@ -1,11 +1,82 @@
 import numpy as np
 import plotly.graph_objects as go
 import utils
+import random
 from math import pi, sin, cos
 from common import edge_iterator
 from drawing_tools import line, semi_circle, circular_arc, edge_trace, quadratic_bezier_curve, kamada_kawai
 
 HEIGHT = 1000
+
+def easydraw(X, Y=None):
+    fig = go.Figure()
+    if Y is None:
+        fig.add_trace(go.Scattergl(x=np.arange(len(X)), y=X, mode='lines'))
+    else:
+        fig.add_trace(go.Scattergl(x=X, y=Y, mode='lines'))
+    fig.update_xaxes(tickvals=[], zeroline=False)
+    fig.update_yaxes(tickvals=[], zeroline=False)
+    fig.update_layout(height=HEIGHT, width=HEIGHT-20, showlegend=False)
+    fig.show()
+    return
+
+def draw(adjacency_list, coords=None, hyperbolic=False):
+    '''
+    Draw the arc type representation of the provided network.
+    Parameters
+    ----------
+    adjacency_list : list of lists
+        Adjacency list containing edge data.
+    '''
+
+    if coords is None:
+        coords = {vertex : (random.random() + random.random()*1j) for vertex in adjacency_list}
+
+    fig = go.Figure()
+
+    # draw the edges
+    for vertex, neighbour, attributes in edge_iterator(adjacency_list):
+        if vertex < neighbour:
+            path = line(coords[vertex], coords[neighbour])
+            fig.add_trace(go.Scattergl(x=path.real, y=path.imag, mode='lines', line_color='red', line_width=1))
+
+    # draw the vertices
+    coord_array = np.array(list(coords.values()))
+    fig.add_trace(go.Scattergl(x=coord_array.real, y=coord_array.imag, mode='markers', marker_size=2, marker_color='blue', showlegend=False, text='a'))
+
+    # figure settings
+    fig.update_xaxes(tickvals=[], zeroline=False)
+    fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
+    fig.update_layout(height=HEIGHT, width=HEIGHT-20, showlegend=False)
+    fig.show()
+    return
+
+def with_coords(adjacency_list, coords):
+    '''
+    Draw the arc type representation of the provided network.
+    Parameters
+    ----------
+    adjacency_list : list of lists
+        Adjacency list containing edge data.
+    '''
+    coords = np.array([coords[i] for i in adjacency_list])
+    fig = go.Figure()
+
+    # draw the edges
+    for vertex, neighbour, attributes in edge_iterator(adjacency_list):
+        if vertex < neighbour:
+            path = line(coords[vertex], coords[neighbour])
+            fig.add_trace(go.Scattergl(x=path.real, y=path.imag, mode='lines', line_color='blue'))
+
+    # draw the vertices
+    fig.add_trace(go.Scattergl(x=coords.real, y=coords.imag, mode='markers', marker_size=10, marker_color='red', showlegend=False, text='a'))
+
+    # figure settings
+    fig.update_xaxes(tickvals=[], zeroline=False)
+    fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
+    fig.update_layout(height=HEIGHT, width=HEIGHT-20, showlegend=False)
+    fig.show()
+    return
 
 def arc(adjacency_list):
     '''
@@ -66,8 +137,8 @@ def hyperbolic(adjacency_list, vertices, euclidean=False):
     for vertex, neighbour, attributes in edge_iterator(adjacency_list):
         if vertex < neighbour:
             i, j = vert_dict[vertex], vert_dict[neighbour]
-            x1, y1 = r[i] * np.cos(phi[i]), r[i] * np.sin(phi[i])
-            x2, y2 = r[j] * np.cos(phi[j]), r[j] * np.sin(phi[j])
+            #x1, y1 = r[i] * np.cos(phi[i]), r[i] * np.sin(phi[i])
+            #x2, y2 = r[j] * np.cos(phi[j]), r[j] * np.sin(phi[j])
             if euclidean or r[i] == 0 or r[j] == 0 or abs((phi[i]-phi[j])%np.pi) < 1e-5:
                 path = line(vert[i], vert[j], color_resolution+1)
             else:

@@ -1,11 +1,10 @@
 import numpy as np
-from itertools import combinations
 import random
 from copy import deepcopy
 from timeit import default_timer as timer
-from math import inf
-from common import priority_queue
-import heapq
+from math import inf, nan
+from common import priority_queue, edge_iterator
+import disjoint_set
 
 def group_sort(adjacency, z, order='index'):
     '''
@@ -103,6 +102,17 @@ def dijsktra(adjacency_list, source, target=None, weight_attribute='weight'):
                 Q.push( (neighbour_dist, neighbour) )
     return dist
 
+def greedy_routing_dijsktra(adjacency_list, metric_distance, source):
+    greedy_distance = dict.fromkeys(adjacency_list, nan)
+    greedy_distance[source] = 0
+    for vertex, distance in sorted(metric_distance.items(), key=lambda li: li[1]):
+        if greedy_distance[vertex] is nan:
+            greedy_distance[vertex] = inf
+        for neighbour in adjacency_list[vertex]:
+            if greedy_distance[neighbour] is nan and distance < metric_distance[neighbour]:
+                greedy_distance[neighbour] = greedy_distance[vertex] + 1
+    return greedy_distance
+
 def minimal_depth_child_search(adjacency_list, root=0):
     '''
     Find the system of ascendancy in a minimal depth tree rooted at root of the provided graph.
@@ -120,3 +130,28 @@ def minimal_depth_child_search(adjacency_list, root=0):
                 parent = neighbour
         children[parent].append(vertex)
     return children
+
+def complex_distance(p1, p2):
+    return abs(p1 - p2)
+
+def poincare_hyperbolic_distance(p1, p2):
+    return np.arccosh( 1 + 2 * abs(p1-p2)**2 / (1 - abs(p1)**2) / (1 - abs(p2)**2) )
+
+def greedy_routing_score(adjacency_list, coords, distance_function=complex_distance):
+    N = len(coords)
+    GR = 0
+    for target in adjacency_list.keys():
+        shortest_path = dijsktra(adjacency_list, target)
+        metric_distance = {vertex : distance_function(coords[target], coord) for vertex, coord in coords.items()}
+        greedy_path = greedy_routing_dijsktra(adjacency_list, metric_distance, target)
+        for sp, gp in zip(shortest_path.values(), greedy_path.values()):
+            if sp != 0:
+                GR += sp/gp
+    return GR / N / (N-1)
+
+def minimum_weight_spanning_tree(adjacency_list):
+    tree_adjacency_list = dict.fromkeys(adjacency_list, None)
+    disjoint_vertices = disjoint_set.DisjointSet()
+    #for vertex, neighbour, attributes in edge_iterator(adjacency_list):
+
+    
