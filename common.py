@@ -1,5 +1,6 @@
 from timeit import default_timer as timer
 import heapq
+import disjoint_set as ds
 
 class priority_queue:
     def __init__(self):
@@ -16,6 +17,32 @@ class priority_queue:
         return min(self.queue)[0]
     def max(self):
         return max(self.queue)[0]
+
+class disjoint_set():
+    def __init__(self, N):
+        self._data = {i:i for i in range(N)}
+        self._size = {i:1 for i in range(N)}
+    def __contains__(self, item):
+        return item in self._data
+    def __iter__(self):
+        return iter(self._data.items())
+    def find(self, item):
+        while item != self._data[item]:
+            self._data[item] = self._data[self._data[item]]
+            item = self._data[item]
+        return item
+    def union(self, item_1, item_2):
+        item_1, item_2 = self.find(item_1), self.find(item_2)
+        if item_1 != item_2:
+            size_1, size_2 = self._size[item_1], self._size[item_2]
+            if size_1 < size_2:
+                item_1, item_2 = item_2, item_1
+            self._data[item_2] = item_1
+            self._size[item_1] = size_1 + size_2
+    def size(self, item):
+        return self._size[self.find(item)]
+    def is_connected(self, item_1, item_2):
+        return self.find(item_1) == self.find(item_2)
 
 def elapsed(func, reps=1, **kwargs):
     start = timer()

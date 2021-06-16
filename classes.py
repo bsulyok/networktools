@@ -1,13 +1,12 @@
-import drawing
-import networkx as nx
-from common import edge_iterator, priority_queue, ienumerate
-from math import inf
+import drawing, embedding
+from common import edge_iterator, ienumerate
 from random import random
-from utils import dijsktra, identify_components
+import utils
+import readwrite
 
-##################
-# DIRECTED GRAPH #
-##################
+####################
+# UNDIRECTED GRAPH #
+####################
 
 class Graph:
 
@@ -16,12 +15,16 @@ class Graph:
     ###################
 
     def __init__(self, graph_data=None):
+        # create empty graph
         if graph_data is None:
-            # create empty graph
-            self._vertices = dict()
             self._adjacency = dict()
-            self._successor = self._adjacency
-            self._predecessor = self._adjacency
+            self._vertices = dict()
+        else:
+            self._adjacency = graph_data['adjacency_list']
+            self._vertices = graph_data['vertices']
+        self._successor = self._adjacency
+        self._predecessor = self._adjacency
+        self.representation = None
 
     def __len__(self):
         return len(self._vertices)
@@ -47,26 +50,10 @@ class Graph:
         elif isinstance(other, Graph):
             return self.__add__(other)
 
-
     #TODO
     def __add__(self, other):
-        if not isinstance(other, Graph):
-            return 'Both input must be Graph objects!'
-        if len(self) == 0:
-            return other
-        elif len(other) == 0:
-            return self
-        if len(other) < len(self):
-            other, self = self, other
-        if len(self) != max(self.vertices) + 1:
-            self.defragment()
-        relabel = {old:new for new, old in enumerate(other.vertices, len(self))}
-        for vertex in relabel.values():
-            self.add_vertex(vertex)
-        for source, target, attributes in iter(other):
-            if source < target:
-                continue
-            self.add_edge(relabel[source], relabel[target])
+        if isinstance(other, Graph):
+            self._adjacency, self._vertices = utils.merge_components(self._adjacency, self._vertices, other._adjacency, other._vertices)
         return self
 
     ##############
@@ -117,14 +104,14 @@ class Graph:
     ###################
 
     def add_edge(self, source, target, **attr):
-        if source not in self._vertices or target not in self._vertices or target in self._successor[source]:
-            return 'Invalid source and/or target'
+        #if source not in self._vertices or target not in self._vertices or target in self._successor[source]:
+        #    return 'Invalid source and/or target'
         self._adjacency[source][target] = dict(**attr)
         self._adjacency[target][source] = dict(**attr)
 
     def remove_edge(self, source, target):
-        if source not in self._vertices or target not in self._vertices or target not in self._successor[source]:
-            return 'Invalid source and/or target'
+        #if source not in self._vertices or target not in self._vertices or target not in self._successor[source]:
+        #    return 'Invalid source and/or target'
         del self._adjacency[source][target]
         del self._adjacency[target][source]
 
@@ -132,91 +119,116 @@ class Graph:
     # writing to file #
     ###################
 
-    def write(self, filename):
-        import csv
-        with open(filename, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile, delimiter=' ', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            #writer.writerow(['source', 'target', 'weight'])
-            writer.writerow(['source', 'target'])
-            for vertex, neighbourhood in self.adjacency.items():
-                for neighbour, attributes in neighbourhood.items():
-                    if vertex < neighbour:
-                        writer.writerow([vertex, neighbour] + list(attributes.values()))
+    def write(self, filename='test.txt'):
+        readwrite.write_graph(self._adjacency, filename)
 
     ######################
     # topology iterators #
     ######################
 
     def edges(self):
-        return edge_iterator(self.successor)
+        return edge_iterator(self._successor)
 
     def vertices(self):
-        return iter(self.iterators)
-
-    def neighbours(self, vertex):
-        if vertex not in self:
-            return 'Vertex does not exist!'
-        return iter(self.adjacency[vertex].items())
+        return iter(self._vertices)
 
     ###################
     # drawing methods #
     ###################
 
+    def draw(self, representation='euclidean', **attr):
+        if self.representation is None:
+            vertices, representation = None, 'euclidean'
+        elif representation is None:
+            vertices, representation = self._vertices, self.representation
+        else:
+            vertices = self._vertices
+        drawing.draw(self._adjacency, vertices=vertices, representation=representation, **attr)
+
     def draw_arc(self):
         drawing.arc(self._successor)
 
-    def draw_circular(self, euclidean=False):
-        drawing.circular(self._successor, euclidean)
+    def draw_circular(self, lines='euclidean'):
+        drawing.circular(self._successor, lines=lines)
 
     def draw_matrix(self):
         drawing.matrix(self._successor)
 
-    def draw_hyperbolic(self, euclidean=False):
-        drawing.hyperbolic(self._successor, self._vertices, euclidean)
+    #####################
+    # embedding methods #
+    #####################
 
+    def embed_greedy(self, representation='hyperbolic_polar'):
+        self._vertices = embedding.greedy_embedding(self._adjacency, self._vertices, representation=representation)
+        self.representation = representation
+
+    def embed_ncMCE(self, representation='hyperbolic_polar'):
+        self._vertices = embedding.ncMCE(self._adjacency, self._vertices, angular_adjustment=embedding.equidistant_adjustment, representation=representation)
+        self.representation = representation
+
+    def embed_hypermap(self, representation='hyperbolic_polar'):
+        self._vertices = embedding.hypermap(self._adjacency, self._vertices, representation=representation)
+        self.representation = representation
+        
+    def embed_mercator(self, representation='hyperbolic_polar'):
+        self._vertices = embedding.mercator(self._adjacency, self._vertices, representation=representation)
+        self.representation = representation
 
     ##############################
     # graph theoretical distance #
-    ##############################
+    ##############################  
 
-    def distance(self, source=None, target=None):
-        if source is not None:
-            return dijsktra(self.adjacency, source, target)
-        else:
-            return {source:dijsktra(self.adjacency, source) for source in self.adjacency}
+    def distance(self, source=None, target=None, weight_attribute=None):
+        return utils.distance(self._adjacency, source, target, weight_attribute)
 
     ########
     # misc #
     ########
 
+    def ispercolating(self):
+        return utils.ispercolating(self._adjacency)
+
     def degree(self):
-        return {vertex:len(neighbourhood) for vertex, neighbourhood in self.adjacency.items()}
+        return {vertex:len(neighbourhood) for vertex, neighbourhood in self._adjacency.items()}
 
     def components(self):
-        return identify_components(self.adjacency)
+        return utils.identify_components(self._adjacency)
 
     def divide(self):
-        comps = identify_components(self.adjacency)
-        for i in range(max(comps.values())+1):
-            True
+        asd = utils.disjunct_components(self._adjacency, self._vertices)
+        bsd = {}
+        for idx, graph_data in asd.items():
+            bsd[idx] =Graph(graph_data=graph_data)
+        return bsd
+        #return {idx:Graph(graph_data) for idx, graph_data in utils.disjunct_components(self._adjacency, self._vertices).items()}
 
-    def defragment(self):
-        relabel = dict(ienumerate(self.vertices))
-        for vertex in list(self.vertices.keys()):
-            if relabel[vertex] == vertex:
-                continue
-            self.vertices[relabel[vertex]] = self.vertices.pop(vertex)
-            for neighbour in self.adjacency[vertex]:
-                self.adjacency[neighbour][relabel[vertex]] = self.adjacency[neighbour].pop(vertex)
-            self.adjacency[relabel[vertex]] = self.adjacency.pop(vertex)
+    def defragment_indices(self, start=0):
+        self._adjacency, self._vertices = utils.defragment_indices(self._adjacency, self._vertices, start=start)
+
+    def largest_component(self):
+        largest_comp = utils.disjunct_components(self._adjacency, self._vertices)[0]
+        self._adjacency, self._vertices = largest_comp['adjacency_list'], largest_comp['vertices']
+
+    def greedy_routing_score(self, normalized=False):
+        if normalized:
+            return utils.greedy_routing_score(self._adjacency, self._vertices, self.representation)
+        else:
+            return utils.greedy_routing_success_score(self._adjacency, self._vertices, self.representation)
+    
+    def greedy_routing_badness(self):
+        return utils.greedy_routing_badness(self._adjacency, self._vertices, self.representation)
 
     ##################################
     # functions for testing purposes #
     ##################################
 
-    def genweight(self):
-        for _, _, attributes in self.edges():
-            attributes.update({'weight':random()})
+    def fill_vertices(self, attribute_name='size', generator=random):
+        for vertex in self.vertices():
+            vertex.update({attribute_name: generator() })
+
+    def fill_edges(self, attribute_name='weight', generator=random):
+        for vertex, neighbour, attributes in self.edges():
+            attributes.update({attribute_name: generator() })
 
     def fill_vertices(self, data):
         if len(data) != len(self.vertices):

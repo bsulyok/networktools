@@ -1,157 +1,308 @@
 import numpy as np
 import random
-from copy import deepcopy
-from timeit import default_timer as timer
-from math import inf, nan
-from common import priority_queue, edge_iterator
-import disjoint_set
+import heapq
+import queue
+from math import degrees, inf, nan
+from common import edge_iterator, disjoint_set
 
-def group_sort(adjacency, z, order='index'):
-    '''
-    Arrange vertices into groups. Order can be "index", "size".
-    '''
-    N = len(adjacency)
-    if islist(adjacency):
-        pass #TODO
-    elif ismat(adjacency):
-        if order == 'index':
-            iperm = np.arange(N)[z.argsort()]
-        elif order == 'size':
-            u, f = np.unique(z, return_counts=True)
-            nz = inverse_permutation(u[f.argsort()][::-1])[z]
-            iperm = np.arange(N)[nz.argsort()]
-        perm = inverse_permutation(iperm)
-        return rearrange(adjacency, perm), z[iperm]
+def merge_components(adjacency_list_1, vertices_1, adjacency_list_2, vertices_2):
+    if len(vertices_1) < len(vertices_2):
+        adjacency_list_1, vertices_1, adjacency_list_2, vertices_2 = adjacency_list_2, vertices_2, adjacency_list_1, vertices_1
+    adjacency_list_1, vertices_1 = defragment_indices(adjacency_list_1, vertices_1, start=0)
+    adjacency_list_2, vertices_2 = defragment_indices(adjacency_list_2, vertices_2, start=len(vertices_1))
+    adjacency_list_1.update(adjacency_list_2)
+    vertices_1.update(vertices_2)
+    return adjacency_list_1, vertices_1
 
-def degree_sort(adjacency, descending=True):
-    '''
-    Sort vertices by their degree. Descending order by default.
-    '''
-    N = len(adjacency)
-    d = np.array(degree(adjacency))
-    if descending:
-        iperm = np.arange(N)[d.argsort()][::-1]
-    else:
-        iperm = np.arange(N)[d.argsort()]
-    return rearrange(adjacency, inverse_permutation(iperm))
-
-def inverse_permutation(perm):
-    if islist(perm):
-        return [i for i, j in sorted(enumerate(perm), key=lambda i_j: i_j[1])]
-
-def rearrange(adjacency, perm):
-    '''
-    Rearrange nodes in an adjacency matrix or list for vanity purposes.
-    '''
-    N = len(perm)
-    iperm = inverse_permutation(perm)
-    if islist(adjacency):
-        return [[perm[j] for j in adjacency[i]] for i in iperm]
-    elif ismat(adjacency):
-        new_adjacency = np.zeros_like(adjacency, dtype=bool)
-        for v1, v2 in edge_list(adjacency):
-            new_adjacency[perm[v1], perm[v2]] = True
-        return new_adjacency | new_adjacency.T
+def defragment_indices(adjacency_list, vertices, start=0):
+    N = len(vertices)
+    if list(vertices) == list(range(N)):
+        return adjacency_list, vertices
+    new_adjacency_list, new_vertices = {vertex:{} for vertex in range(start, N+start)}, {vertex:{} for vertex in range(start, N+start)}
+    relabel = {old:new for new, old in enumerate(vertices, start=start)}
+    for vertex, neighbour, attributes in edge_iterator(adjacency_list):
+        new_adjacency_list[relabel[vertex]].update({relabel[neighbour]:attributes})
+    for vertex, attributes in vertices.items():
+        new_vertices[relabel[vertex]].update(attributes)
+    return new_adjacency_list, new_vertices
 
 def ispercolating(adjacency_list):
-    return max(identify_components(adjacency_list).values()) == 1
+    '''
+    Decide whether the provided adjacency list describes a large single component.
+    '''
+    root = list(adjacency_list)[-1]
+    visited = {vertex:False for vertex in adjacency_list}
+    visited[root] = True
+    visited_counter = 1
+    vertex_queue = queue.Queue()
+    vertex_queue.put(root)
+    while not vertex_queue.empty():
+        vertex = vertex_queue.get()
+        for neighbour in adjacency_list[vertex]:
+            if not visited[neighbour]:
+                vertex_queue.put(neighbour)
+                visited[neighbour] = True
+                visited_counter += 1
+    return visited_counter == len(adjacency_list)
 
 def identify_components(adjacency_list):
     '''
     Identify disjunct components via a simple percolation algorithm.
     '''
-    component = dict.fromkeys(adjacency_list, None)
-    counter = 0
+    component_id = dict.fromkeys(adjacency_list, None)
+    component_counter = 0
+    vertex_queue = queue.Queue()
     for source in adjacency_list:
-        if component[source] is not None:
-            continue
-        component[source] = counter
-        counter += 1
-        stack = {source}
-        while 0 < len(stack):
-            vertex = stack.pop()
-            component[vertex] = component[source]
-            for neighbour in adjacency_list[vertex]:
-                if component[neighbour] is None:
-                    stack.add(neighbour)
-    return component
+        if component_id[source] is None:
+            component_id[source] = component_counter
+            vertex_queue.put(source)
+            while not vertex_queue.empty():
+                vertex = vertex_queue.get()
+                for neighbour in adjacency_list[vertex]:
+                    if component_id[neighbour] is None:
+                        component_id[neighbour] = component_counter
+                        vertex_queue.put(neighbour)
+            component_counter += 1
+    return component_id
+
+def disjunct_components(adjacency_list, vertices=None):
+    if vertices is None:
+        vertices = {vertex:{} for vertex in adjacency_list}
+    disjunct_comps = {}
+    component_size = {}
+    component_id = dict.fromkeys(adjacency_list, None)
+    component_counter = 0
+    vertex_queue = queue.Queue()
+    for root in adjacency_list:
+        if component_id[root] is None:
+            disjunct_comps[component_counter] = {'adjacency_list':{root:adjacency_list[root]}, 'vertices':{root:vertices[root]}}
+            component_size[component_counter] = 1
+            component_id[root] = component_counter
+            vertex_queue.put(root)
+            while not vertex_queue.empty():
+                vertex = vertex_queue.get()
+                disjunct_comps[component_counter]['adjacency_list'].update({vertex:adjacency_list[root]})
+                disjunct_comps[component_counter]['vertices'].update({vertex:vertices[root]})
+                for neighbour in adjacency_list[vertex]:
+                    if component_id[neighbour] is None:
+                        component_size[component_counter] += 1
+                        component_id[neighbour] = component_counter
+                        vertex_queue.put(neighbour)
+            component_counter += 1
+    
+    return {id:disjunct_comps[comp] for id, comp in enumerate(sorted(component_size, key=lambda c:component_size[c], reverse=True))}
+
+def breadth_first_distance(adjacency_list, source, target=None):
+    '''
+    Find the distance from source while performing a breadth first search.
+    If a target vertex is provided the function terminates when the target is reached.
+    '''
+    visited = dict.fromkeys(adjacency_list, False)
+    visited[source] = True
+    vertex_queue = queue.Queue()
+    vertex_queue.put(source)
+    dist = dict.fromkeys(adjacency_list, inf)
+    dist[source] = 0
+    while not vertex_queue.empty():
+        vertex = vertex_queue.get()
+        if vertex == target:
+            return dist[vertex]
+        for neighbour in adjacency_list[vertex].keys():
+            if not visited[neighbour]:
+                dist[neighbour] = dist[vertex] + 1
+                vertex_queue.put(neighbour)
+                visited[neighbour] = True
+    return dist
 
 def dijsktra(adjacency_list, source, target=None, weight_attribute='weight'):
     '''
     Find the graph theoretical distance using Dijsktra's algorithm.
-    If a target vertex is provided the program terminates when the target is reached and only the distance between the source and the target is returned.
+    If a target vertex is provided the function terminates when the target is reached.
     '''
-    Q = priority_queue()
+    N = len(adjacency_list)
     visited = dict.fromkeys(adjacency_list, False)
+    visited_count = 0
     dist = dict.fromkeys(adjacency_list, inf)
     dist[source] = 0
-    Q.push( (0, source) )
-    while 0 < len(Q):
-        vertex_dist, vertex = Q.pop()
-        if vertex == target:
-            return vertex_dist
-        if visited[vertex]:
-            continue
-        visited[vertex] = True
-        for neighbour, attributes in adjacency_list[vertex].items():
-            if visited[neighbour]:
-                continue
-            neighbour_dist = vertex_dist + attributes.get(weight_attribute, 1)
-            if neighbour_dist < dist[neighbour]:
-                dist[neighbour] = neighbour_dist
-                Q.push( (neighbour_dist, neighbour) )
+    queue_size = 1
+    vertex_queue = [ (0, source) ]
+    heapq.heapify(vertex_queue)
+    while visited_count < N:
+        try:
+            print(len(vertex_queue), visited_count)
+            vertex_dist, vertex = heapq.heappop(vertex_queue)
+            queue_size -= 1
+            if vertex == target:
+                return vertex_dist
+            if not visited[vertex]:
+                visited[vertex] = True
+                visited_count += 1
+                for neighbour, attributes in adjacency_list[vertex].items():
+                    if not visited[neighbour]:
+                        neighbour_dist = vertex_dist + attributes[weight_attribute]
+                        if neighbour_dist < dist[neighbour]:
+                            dist[neighbour] = neighbour_dist
+                            heapq.heappush(vertex_queue, (neighbour_dist, neighbour))
+                            queue_size += 1
+        except:
+            break
     return dist
 
-def greedy_routing_dijsktra(adjacency_list, metric_distance, source):
-    greedy_distance = dict.fromkeys(adjacency_list, nan)
-    greedy_distance[source] = 0
-    for vertex, distance in sorted(metric_distance.items(), key=lambda li: li[1]):
-        if greedy_distance[vertex] is nan:
-            greedy_distance[vertex] = inf
+def distance(adjacency_list, source=None, target=None, weight_attribute=None):
+    '''
+    A wrapper for calling breadth first search (unweighted) and dijsktra (weighted) in the appropriate setting.
+    If no source vertex is provided graph theoretical distances are calculated for all source-target pairs.
+    '''
+    if weight_attribute is None:
+        if source is None:
+            return {vertex:breadth_first_distance(adjacency_list, vertex) for vertex in adjacency_list}
+        else:
+            return breadth_first_distance(adjacency_list, source, target)
+    else:
+        if source is None:
+            return {vertex:dijsktra(adjacency_list, vertex, None, weight_attribute) for vertex in adjacency_list}
+        else:
+            return dijsktra(adjacency_list, source, target, weight_attribute)
+
+def minimum_depth_spanning_tree(adjacency_list, root=None, directed=False):
+    depth = dict.fromkeys(adjacency_list, None)
+    vertex_queue = queue.Queue()
+    degree = {}
+    for vertex, neighbourhood in adjacency_list.items():
+        deg = len(neighbourhood)
+        degree[vertex] = deg
+        if deg == 1:
+            vertex_queue.put(vertex)
+    while not vertex_queue.empty():
+        vertex = vertex_queue.get()
+        
+
+def minimum_depth_spanning_tree(adjacency_list, root=None, directed=False):
+    '''
+    Find the minimum depth spanning tree rooted at root of the provided graph.
+    '''
+    N = len(adjacency_list)
+    tree_adjacency_list = {vertex:{} for vertex in adjacency_list}
+    vertex_queue = queue.Queue()
+    vertex_queue.put(root)
+    visited = dict.fromkeys(adjacency_list, False)
+    visited[root] = True
+    visited_total = 0
+    queue_size = 1
+    while 0 < queue_size and visited_total < N:
+        vertex = vertex_queue.get()
+        queue_size -= 1
         for neighbour in adjacency_list[vertex]:
-            if greedy_distance[neighbour] is nan and distance < metric_distance[neighbour]:
-                greedy_distance[neighbour] = greedy_distance[vertex] + 1
-    return greedy_distance
+            if not visited[neighbour]:
+                tree_adjacency_list[vertex].update({neighbour:adjacency_list[vertex][neighbour]})
+                if not directed:
+                    tree_adjacency_list[neighbour].update({vertex:adjacency_list[neighbour][vertex]})
+                vertex_queue.put(neighbour)
+                queue_size += 1
+                visited[neighbour] = True
+                visited_total += 1
+    return tree_adjacency_list
 
-def minimal_depth_child_search(adjacency_list, root=0):
+def minimum_weight_spanning_tree(adjacency_list, weight_attribute='weight'):
     '''
-    Find the system of ascendancy in a minimal depth tree rooted at root of the provided graph.
+    Find the minimum weight spanning tree rooted at root of the provided graph.
     '''
-    distance_from_root = dijsktra(adjacency_list, root)
-    if max(distance_from_root.values()) is inf:
-        raise TypeError('The graph is not connected!')
-    children = {vertex:list() for vertex in adjacency_list}
-    for vertex, neighbours in adjacency_list.items():
-        if vertex is root:
-            continue
-        parent = None
-        for neighbour in neighbours:
-            if parent is None or distance_from_root[neighbour] < distance_from_root[parent]:
-                parent = neighbour
-        children[parent].append(vertex)
-    return children
+    N = len(adjacency_list)
+    tree_adjacency_list = {vertex:{} for vertex in adjacency_list}
+    disjoint_vertices = disjoint_set(N)
+    edge_queue = sorted(edge_iterator(adjacency_list), key=lambda li:li[2][weight_attribute])
+    component_size = 1
+    for vertex, neighbour, attributes in edge_queue:
+        if not disjoint_vertices.is_connected(vertex, neighbour):
+            disjoint_vertices.union(vertex, neighbour)
+            tree_adjacency_list[vertex].update({neighbour:adjacency_list[vertex][neighbour]})
+            tree_adjacency_list[neighbour].update({vertex:adjacency_list[neighbour][vertex]})
+            component_size = max(component_size, disjoint_vertices.size(vertex), disjoint_vertices.size(neighbour))
+        if component_size == N:
+            break
+    return tree_adjacency_list    
 
-def complex_distance(p1, p2):
-    return abs(p1 - p2)
+def euclidean_distance(r1, phi1, r2, phi2):
+    arg = r1**2 + r2**2 - 2 * r1 * r2 * np.cos(phi1 - phi2)
+    if arg <= 0:
+        return 0
+    return np.sqrt( arg )
 
-def poincare_hyperbolic_distance(p1, p2):
-    return np.arccosh( 1 + 2 * abs(p1-p2)**2 / (1 - abs(p1)**2) / (1 - abs(p2)**2) )
+def poincare_distance(r1, phi1, r2, phi2):
+    return np.arccosh( 1 + 2 * euclidean_distance(r1, phi1, r2, phi2) / (1-r1)**2 / (1-r2)**2 )
 
-def greedy_routing_score(adjacency_list, coords, distance_function=complex_distance):
-    N = len(coords)
-    GR = 0
+def hyperbolic_polar_distance(r1, phi1, r2, phi2):
+    arg = np.cosh(r1) * np.cosh(r2) - np.sinh(r1) * np.sinh(r2) * np.cos(np.pi - abs(np.pi - abs(phi1 - phi2)))
+    if arg <= 1:
+        return 0
+    return np.arccosh( arg )
+
+def greedy_routing_success_score(adjacency_list, vertices, representation='euclidean'):
+    GRS = 0
+    if representation == 'euclidean':
+        distance_function = euclidean_distance
+    elif representation == 'hyperbolic_polar':
+        distance_function = hyperbolic_polar_distance
+    elif representation == 'poincare':
+        distance_function = poincare_distance
     for target in adjacency_list.keys():
-        shortest_path = dijsktra(adjacency_list, target)
-        metric_distance = {vertex : distance_function(coords[target], coord) for vertex, coord in coords.items()}
-        greedy_path = greedy_routing_dijsktra(adjacency_list, metric_distance, target)
-        for sp, gp in zip(shortest_path.values(), greedy_path.values()):
-            if sp != 0:
-                GR += sp/gp
+        target_r, target_phi = vertices[target]['coord']['r'], vertices[target]['coord']['phi']
+        metric_distance = {vertex : distance_function(target_r, target_phi, attributes['coord']['r'], attributes['coord']['phi']) for vertex, attributes in vertices.items()}
+        greedy_success = dict.fromkeys(adjacency_list, None)
+        greedy_success[target] = True
+        for vertex in sorted(adjacency_list, key=lambda vert:metric_distance[vert]):
+            if greedy_success[vertex] is None:
+                greedy_success[vertex] = False
+            for neighbour in adjacency_list[vertex]:
+                if greedy_success[neighbour] is None:
+                    greedy_success[neighbour] = greedy_success[vertex]
+                    GRS += 1
+    N = len(adjacency_list)
+    return GRS / N / (N-1)
+
+def greedy_routing_badness(adjacency_list, vertices, representation='euclidean'):
+    badness = {vertex:0 for vertex in adjacency_list}
+    if representation == 'euclidean':
+        distance_function = euclidean_distance
+    elif representation == 'hyperbolic_polar':
+        distance_function = hyperbolic_polar_distance
+    elif representation == 'poincare':
+        distance_function = poincare_distance
+    for target in adjacency_list.keys():
+        target_r, target_phi = vertices[target]['coord']['r'], vertices[target]['coord']['phi']
+        metric_distance = {vertex : distance_function(target_r, target_phi, attributes['coord']['r'], attributes['coord']['phi']) for vertex, attributes in vertices.items()}
+        greedy_success = dict.fromkeys(adjacency_list, nan)
+        greedy_success[target] = 0
+        for vertex in sorted(adjacency_list, key=lambda vert:metric_distance[vert]):
+            if greedy_success[vertex] is nan:
+                greedy_success[vertex] = 1
+                badness[vertex] += 1
+            for neighbour in adjacency_list[vertex]:
+                if greedy_success[neighbour] is nan:
+                    greedy_success[neighbour] = greedy_success[vertex] / 2
+                    badness[neighbour] += greedy_success[neighbour]
+    return badness
+
+def greedy_routing_score(adjacency_list, vertices, representation='euclidean'):
+    GR = 0
+    if representation == 'euclidean':
+        distance_function = euclidean_distance
+    elif representation == 'hyperbolic_polar':
+        distance_function = hyperbolic_polar_distance
+    elif representation == 'poincare':
+        distance_function = poincare_distance
+    for target in adjacency_list.keys():
+        shortest_path = distance(adjacency_list, target)
+        target_r, target_phi = vertices[target]['coord']['r'], vertices[target]['coord']['phi']
+        metric_distance = {vertex : distance_function(target_r, target_phi, attributes['coord']['r'], attributes['coord']['phi']) for vertex, attributes in vertices.items()}
+        greedy_distance = dict.fromkeys(adjacency_list, nan)
+        greedy_distance[target] = 0
+        for vertex in sorted(adjacency_list, key=lambda vert:metric_distance[vert]):
+            if greedy_distance[vertex] is nan:
+                greedy_distance[vertex] = inf
+            for neighbour in adjacency_list[vertex]:
+                if greedy_distance[neighbour] is nan:
+                    greedy_distance[neighbour] = greedy_distance[vertex] + 1
+                    GR += shortest_path[neighbour] / greedy_distance[neighbour]
+    N = len(adjacency_list)
     return GR / N / (N-1)
-
-def minimum_weight_spanning_tree(adjacency_list):
-    tree_adjacency_list = dict.fromkeys(adjacency_list, None)
-    disjoint_vertices = disjoint_set.DisjointSet()
-    #for vertex, neighbour, attributes in edge_iterator(adjacency_list):
-
-    

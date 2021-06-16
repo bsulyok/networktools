@@ -5,49 +5,53 @@ import plotly.graph_objects as go
 
 HEIGHT = 1000
 
-def semi_circle_np(x1, x2):
-    angle = np.linspace(0, np.pi, int(abs(x2-x1) * 1000))
-    X = (x1+x2)/2 + abs(x2-x1)/2 * np.cos(angle)
-    Y = abs(x2-x1)/2 * np.sin(angle)
-    return X, Y
+def semi_circle(p1, p2, number_of_samples=100):
+    return (p1+p2)/2 + abs(p1-p2) / 2 * np.exp(1j * np.linspace(0, np.pi, number_of_samples))
 
-def semi_circle(x1, x2):
-    X, Y = [], []
-    N = int(abs(x2-x1)*1000)
-    incr = pi/(N-1)
-    center = (x1+x2)/2
-    radius = abs(x1-x2)/2
-    for asd in range(N):
-        angle = asd*incr
-        X.append(center+radius*cos(angle))
-        Y.append(radius*sin(angle))
-    return X, Y
+def poincare_line(r1, phi1, r2, phi2, number_of_samples=100):
+    if r1 < 1e-5 or r2 < 1e-5 or abs((phi1 - phi2) % np.pi ) < 1e-5:
+        return euclidean_line(r1, phi1, r2, phi2, 2)
+    c = (r1+1/r1) / (r2+1/r2)
+    phi0 = np.arctan( (np.cos(phi1) - c * np.cos(phi2)) / (c * np.sin(phi2) - np.sin(phi1)) )
+    r0 = (r1 + 1/r1) / 2 / np.cos(phi1-phi0)
+    start_angle, end_angle = phi1, phi2
+    if end_angle < start_angle:
+        start_angle, end_angle = end_angle, start_angle
+    if np.pi < end_angle - start_angle:
+        end_angle -= 2*np.pi
+    phi = np.linspace(start_angle, end_angle, number_of_samples)
+    rcos = r0 * np.cos(phi - phi0)
+    r = rcos - np.sqrt( rcos**2 - 1 )
+    return r*np.cos(phi), r*np.sin(phi)
 
-def circular_arc(p1, p2, number_of_samples=100):
+def poincare_line2(p1, p2, number_of_samples=100):
+    if abs(p1) < 1e-5 or abs(p2) < 1e-5 or abs((p1/p2).imag) < 1e-5:
+        return euclidean_line(p1, p2, 2)
     center = ( p1 * (1 + p2*p2.conjugate()) - p2 * (1 + p1*p1.conjugate()) ) / ( p1 * p2.conjugate() - p1.conjugate() * p2 )
     radius = np.sqrt(center*center.conjugate() - 1)
     start_angle = np.angle(p1-center)
     end_angle = np.angle(p2-center)
-    if np.pi < start_angle-end_angle:
-        start_angle -= 2*np.pi
-    elif np.pi < end_angle - start_angle:
+    if end_angle < start_angle:
+        start_angle, end_angle = end_angle, start_angle
+    if np.pi < end_angle - start_angle:
         end_angle -= 2*np.pi
     phi = np.linspace(start_angle, end_angle, number_of_samples)
-    arc = center + radius * np.exp(1j * phi)
-    return arc
+    return center + radius * np.exp(1j * phi)
 
-def circular_arc2(x1, y1, x2, y2, number_of_samples=100):
-    x_center = ( y1*(x2*x2 + y2*y2 + 1) - y2*(x1*x1 + y1*y1 +1) ) / (x2*y1 - x1*y2) / 2
-    y_center = ( x2*(x1*x1 + y1*y1 + 1) - x1*(x2*x2 + y2*y2 +1) ) / (x2*y1 - x1*y2) / 2
-    radius = np.sqrt(x_center**2 + y_center**2 - 1)
-    start_angle = np.arctan2(x1 - x_center, y1 - y_center)
-    end_angle = np.arctan2(x2 - x_center, y2 - y_center)
-    if np.pi < start_angle-end_angle:
-        start_angle -= 2*np.pi
-    elif np.pi < end_angle - start_angle:
+def hyperbolic_polar_line(r1, phi1, r2, phi2, number_of_samples=100):
+    if r1 < 1e-5 or r2 < 1e-5 or abs((phi1 - phi2) % np.pi ) < 1e-5:
+        return euclidean_line(r1, phi1, r2, phi2, 2)
+    A_1, A_2 = np.tanh(r1), np.tanh(r2)
+    phi0 = np.arctan( - (A_1 * np.cos(phi1) - A_2 * np.cos(phi2)) / (A_1 * np.sin(phi1) - A_2 * np.sin(phi2)) )
+    B = A_1 * np.cos(phi1 - phi0)
+    start_angle, end_angle = phi1, phi2
+    if end_angle < start_angle:
+        start_angle, end_angle = end_angle, start_angle
+    if np.pi < end_angle - start_angle:
         end_angle -= 2*np.pi
     phi = np.linspace(start_angle, end_angle, number_of_samples)
-    return x_center + radius * np.sin(phi), y_center + radius * np.cos(phi)
+    r = np.arctanh( B / np.cos(phi - phi0) )
+    return r*np.cos(phi), r*np.sin(phi)
 
 def edge_trace(x_coords, y_coords, width=1, color='black'):
     if isinstance(color, str):
@@ -60,27 +64,8 @@ def edge_trace(x_coords, y_coords, width=1, color='black'):
             traces.append(go.Scattergl(x=x_coords[div[i]:div[i+1]+1], y=y_coords[div[i]:div[i+1]+1], mode='lines', line_width=width, line_color=curcolor, showlegend=False))
         return traces
 
-def line(p1, p2, number_of_samples=100):
-    return np.linspace(p1, p2, number_of_samples)
-
-def quadratic_bezier_curve(p1, p2, p3):
-    '''
-    Compute the quadratic Bezier curve for the given points
-    Parameters
-    ----------
-    p1, p2, p3 : array_like
-        Points defining the Bezier curve.
-    num : int
-        Number of points on the curve.
-    Returns
-    ---------
-    curve : ndarray
-        Point of the generated curve.
-    '''
-    N = 100
-    p1, p2, p3 = np.array(p1), np.array(p2), np.array(p3)
-    t = np.linspace(0,1,N)[:,None]
-    return (p2 + (1-t)**2 * (p1 - p2) + t**2 * (p3 - p2)).T
+def euclidean_line(r1, phi1, r2, phi2, number_of_samples=2):
+    return np.linspace(r1*np.cos(phi1), r2*np.cos(phi2), number_of_samples), np.linspace(r1*np.sin(phi1), r2*np.sin(phi2), number_of_samples)
 
 def kamada_kawai(adjacency_list, graph_distance):
     N = len(adjacency_list)

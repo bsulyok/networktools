@@ -4,7 +4,7 @@ from itertools import combinations, combinations_with_replacement
 import random
 from classes import Graph, DiGraph
 
-def empty_graph(N, directed=False):
+def empty_graph(N=0, directed=False):
     '''
     Create an empty graph of given size.
     Parameters
@@ -196,47 +196,58 @@ def watts_stogratz_graph(N, k=2, beta=0.5, output='graph'):
                 G.add_edge(vertex, new_neighbour)
     return G
 
-def hyperbolic_distance(r_source, angle_source, r_target, angle_target, curv=1):
-    angular_difference = np.pi - abs( np.pi - abs( angle_source - angle_target ) )
-    comp1 =  np.cosh( curv * r_source ) * np.cosh( curv * r_target )
-    comp2 =  np.sinh( curv * r_source ) * np.sinh( curv * r_target ) * np.cos(angular_difference)
-    return np.arccosh( comp1 - comp2 ) / curv
+def hyperbolic_distance_from(r_source, angle_source, r_targets, angle_targets):
+    angular_difference = np.pi - abs( np.pi - abs( angle_source - angle_targets ) )
+    comp1 =  np.cosh( r_source ) * np.cosh( r_targets )
+    comp2 =  np.sinh( r_source ) * np.sinh( r_targets ) * np.cos(angular_difference)
+    return np.arccosh( comp1 - comp2 )
 
-def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, curv=1):
+def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, representation='hyperbolic_polar'):
 
-    radial_coordinate = 2/curv*np.log(np.arange(1,N+1))
+    initial_radial_coordinate = 2*np.log(np.arange(1,N+1))
     angular_coordinate = 2*np.pi*np.random.rand(N)
-
+    
     if T != 0 and beta == 1:
-        cutoff = radial_coordinate - 2 / curv * np.log( T / np.sin( T * np.pi ) * curv * radial_coordinate / m )
+        cutoff = initial_radial_coordinate - 2 * np.log( T / np.sin( T * np.pi ) * initial_radial_coordinate / m )
     elif T !=0 and beta != 1:
-        cutoff = radial_coordinate - 2 / curv * np.log( T / np.sin( T * np.pi ) * ( 1 - np.exp( - curv / 2 * (1-beta) * radial_coordinate ) ) / m / (1-beta) )
+        cutoff = initial_radial_coordinate - 2 * np.log( 2 * T / np.sin( T * np.pi ) * ( 1 - np.exp( - (1-beta) / 2 * initial_radial_coordinate ) ) / m / (1-beta) )
 
-    G = empty_graph(N)
-    G = Graph()
-    for i, (r, phi) in enumerate(zip(radial_coordinate, angular_coordinate)):
-        G.add_vertex(i, r=r, phi=phi)
+    G = empty_graph()
+    #final_radial_coordinate = beta * initial_radial_coordinate + (1-beta) * initial_radial_coordinate[-1]
+    final_radial_coordinate = initial_radial_coordinate.copy()
+    G.representation = representation
+    if representation == 'poincare':
+        final_radial_coordinate = np.tanh( final_radial_coordinate / 2 ) ** 2
+    for i, (r, phi) in enumerate(zip(final_radial_coordinate, angular_coordinate)):
+        #G.add_vertex(i, coord=r*np.exp(1j*phi))
+        G.add_vertex(i, coord={'r':r, 'phi':phi})
 
     for i in range(N):
-        radial_coordinate[:i] = beta * radial_coordinate[:i] + (1-beta) * radial_coordinate[i]
 
         if i <= m:
             for j in range(i):
                 G.add_edge(i, j)
             continue
 
-        distance = hyperbolic_distance(radial_coordinate[i], angular_coordinate[i], radial_coordinate[:i], angular_coordinate[:i], curv)
+        radial_coordinate = beta * initial_radial_coordinate[:i] + (1-beta) * initial_radial_coordinate[i]
+
+        distance = hyperbolic_distance_from(initial_radial_coordinate[i], initial_radial_coordinate[i], radial_coordinate, angular_coordinate[:i])
 
         if T == 0:
             for j in distance.argsort()[:m]:
                 G.add_edge(i, j)
 
         else:
-            edge_probability = 1 / ( 1 + np.exp( curv / 2 / T * (distance - cutoff[i]) ) )
+            edge_probability = 1 / ( 1 + np.exp( (distance - cutoff[i]) / 2 / T ) )
             for j in np.where(np.random.rand(i) < edge_probability)[0]:
                 G.add_edge(i, j)
 
     return G
+
+def extended_popularity_similarity_optimisation_model(N, m, L, beta=0.5, T=0.5, representation='hyperbolic_polar'):
+    arrival_time = np.arange(1, N-1)
+    L = 2 * L * (1-beta) / (1-arrival_time)
+    return L
 
 def regular_tree(degree=3, max_depth=4):
     if not isinstance(degree, int) or degree < 3:
@@ -262,3 +273,4 @@ ER = erdos_renyi_graph
 SBM = stochastic_block_model
 BA = barabasi_albert_graph
 PSO = popularity_similarity_optimisation_model
+EPSO = extended_popularity_similarity_optimisation_model

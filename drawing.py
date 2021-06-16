@@ -4,7 +4,7 @@ import utils
 import random
 from math import pi, sin, cos
 from common import edge_iterator
-from drawing_tools import line, semi_circle, circular_arc, edge_trace, quadratic_bezier_curve, kamada_kawai
+from drawing_tools import euclidean_line, semi_circle, poincare_line, edge_trace, kamada_kawai, hyperbolic_polar_line
 
 HEIGHT = 1000
 
@@ -20,56 +20,52 @@ def easydraw(X, Y=None):
     fig.show()
     return
 
-def draw(adjacency_list, coords=None, hyperbolic=False):
+def draw(adjacency_list, vertices=None, representation='euclidean', vertex_scale=None, edge_scale=None, default_vertex_color=1, default_edge_color='blue'):
     '''
-    Draw the arc type representation of the provided network.
+    Draw the provided network.
     Parameters
     ----------
     adjacency_list : list of lists
         Adjacency list containing edge data.
+    vertices : list of lists
+        List containing vertex data.
     '''
-
-    if coords is None:
-        coords = {vertex : (random.random() + random.random()*1j) for vertex in adjacency_list}
-
+    
+    if vertices is None:
+        vertices = {vertex : {'coord':{'r':random.random(), 'phi':2*np.pi*random.random()}} for vertex in adjacency_list}
+    if vertex_scale is None:
+        vertex_scale = 5
+    if edge_scale is None:
+        edge_scale = 1
+    if representation == 'hyperbolic_polar':
+        path_function = hyperbolic_polar_line
+    elif representation == 'poincare':
+        path_function = poincare_line
+    elif representation == 'euclidean':
+        path_function = euclidean_line
+    
     fig = go.Figure()
 
     # draw the edges
     for vertex, neighbour, attributes in edge_iterator(adjacency_list):
         if vertex < neighbour:
-            path = line(coords[vertex], coords[neighbour])
-            fig.add_trace(go.Scattergl(x=path.real, y=path.imag, mode='lines', line_color='red', line_width=1))
+            coord_1, coord_2 = vertices[vertex]['coord'], vertices[neighbour]['coord']
+            r1, phi1 = coord_1.get('r'), coord_1.get('phi')
+            r2, phi2 = coord_2.get('r'), coord_2.get('phi')
+            path = path_function( r1, phi1, r2, phi2)
+            line_width = attributes.get('width', 1) * edge_scale
+            line_color = attributes.get('color', default_edge_color)
+            fig.add_trace(go.Scattergl(x=path[0], y=path[1], mode='lines', line_color=line_color, line_width=line_width))
 
     # draw the vertices
-    coord_array = np.array(list(coords.values()))
-    fig.add_trace(go.Scattergl(x=coord_array.real, y=coord_array.imag, mode='markers', marker_size=2, marker_color='blue', showlegend=False, text='a'))
-
-    # figure settings
-    fig.update_xaxes(tickvals=[], zeroline=False)
-    fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
-    fig.update_layout(height=HEIGHT, width=HEIGHT-20, showlegend=False)
-    fig.show()
-    return
-
-def with_coords(adjacency_list, coords):
-    '''
-    Draw the arc type representation of the provided network.
-    Parameters
-    ----------
-    adjacency_list : list of lists
-        Adjacency list containing edge data.
-    '''
-    coords = np.array([coords[i] for i in adjacency_list])
-    fig = go.Figure()
-
-    # draw the edges
-    for vertex, neighbour, attributes in edge_iterator(adjacency_list):
-        if vertex < neighbour:
-            path = line(coords[vertex], coords[neighbour])
-            fig.add_trace(go.Scattergl(x=path.real, y=path.imag, mode='lines', line_color='blue'))
-
-    # draw the vertices
-    fig.add_trace(go.Scattergl(x=coords.real, y=coords.imag, mode='markers', marker_size=10, marker_color='red', showlegend=False, text='a'))
+    N = len(adjacency_list)
+    marker_x, marker_y, marker_size, marker_color = np.empty(N), np.empty(N), np.empty(N), np.empty(N)
+    for vertex, attributes in vertices.items():
+        marker_x[vertex] = attributes['coord'].get('r') * np.cos(attributes['coord'].get('phi'))
+        marker_y[vertex] = attributes['coord'].get('r') * np.sin(attributes['coord'].get('phi'))
+        marker_color[vertex] = attributes.get('color', default_vertex_color)
+        marker_size[vertex] = attributes.get('size', 1) * vertex_scale
+    fig.add_trace(go.Scattergl(x=marker_x, y=marker_y, mode='markers', marker_size=marker_size, marker_color=marker_color, showlegend=False, marker_reversescale=True, marker_opacity=1))
 
     # figure settings
     fig.update_xaxes(tickvals=[], zeroline=False)
@@ -88,74 +84,28 @@ def arc(adjacency_list):
     '''
     edge_resolution, color_resolution = 100, 10
     N = len(adjacency_list)
+    X = np.linspace(0, 1, N)
     vert_dict = {ID:idx for idx, ID in enumerate(adjacency_list.keys())}
     fig = go.Figure()
 
     # draw the edges
     for vertex, neighbour, attributes in edge_iterator(adjacency_list):
         if vertex < neighbour:
-            x1, x2 = vert_dict[vertex]/N, vert_dict[neighbour]/N
-            angle = np.linspace(0, np.pi, edge_resolution)
-            x_path = (x1+x2)/2 + abs(x1-x2) / 2 * np.cos(angle)
-            y_path = abs(x1-x2) / 2 * np.sin(angle)
-            fig.add_traces(edge_trace(x_path, y_path, 1, color_resolution))
+            p1, p2 = X[vert_dict[vertex]], X[vert_dict[neighbour]]
+            path = semi_circle(p1, p2)
+            fig.add_trace(go.Scattergl(x=path.real, y=path.imag, mode='lines', line_color='red', line_width=1))
 
     # draw the vertices
-    fig.add_trace(go.Scattergl(x=np.arange(N)/(N-1), y=np.zeros(N), mode='markers', marker_size=10, marker_color='blue', showlegend=False, text='a'))
+    fig.add_trace(go.Scattergl(x=X, y=np.zeros(N), mode='markers', marker_size=10, marker_color='blue', showlegend=False, text='a'))
 
     # figure settings
     fig.update_xaxes(tickvals=[], zeroline=False)
     fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
-    fig.update_layout(height=HEIGHT, width=HEIGHT-20)
+    fig.update_layout(height=HEIGHT, width=HEIGHT-20, showlegend=False)
     fig.show()
     return
 
-def hyperbolic(adjacency_list, vertices, euclidean=False):
-    '''
-    Draw the hyperbolic representation of the provided network on the Poincare disc.
-    Parameters
-    ----------
-    adjacency_list : list of lists
-        Adjacency list containing edge data.
-    vertices : list of dicts
-        List of vertex data. Must contain "r" and "angle" values.
-    euclidean : boolean
-        Whether to draw hyperbolic or euclidean lines. Default is False
-    '''
-    edge_resolution, color_resolution = 100, 10
-    N = len(adjacency_list)
-    edge_width, vertex_size = 1, 10
-    r = np.array([attr['r'] for attr in vertices.values()])
-    phi = np.array([attr['phi'] for attr in vertices.values()])
-    r = r / r.max()
-    vert = r * np.exp(1j * phi)
-    #vert = 2 * vert / ( 1 + vert * vert.conjugate())
-    vert_dict = {ID:idx for idx, ID in enumerate(vertices.keys())}
-    fig = go.Figure()
-
-    # draw the edges
-    for vertex, neighbour, attributes in edge_iterator(adjacency_list):
-        if vertex < neighbour:
-            i, j = vert_dict[vertex], vert_dict[neighbour]
-            #x1, y1 = r[i] * np.cos(phi[i]), r[i] * np.sin(phi[i])
-            #x2, y2 = r[j] * np.cos(phi[j]), r[j] * np.sin(phi[j])
-            if euclidean or r[i] == 0 or r[j] == 0 or abs((phi[i]-phi[j])%np.pi) < 1e-5:
-                path = line(vert[i], vert[j], color_resolution+1)
-            else:
-                path = circular_arc(vert[i], vert[j], edge_resolution)
-            fig.add_traces(edge_trace(path.real, path.imag, 1, color_resolution))
-
-    # draw the vertices
-    fig.add_trace(go.Scattergl(x=vert.real, y=vert.imag, mode='markers', marker_size=vertex_size, marker_color='rgb(255,0,0)', showlegend=False))
-
-    # figure settings
-    fig.update_xaxes(tickvals=[], zeroline=False)
-    fig.update_yaxes(tickvals=[], zeroline=False, scaleanchor='x')
-    fig.update_layout(height=HEIGHT, width=HEIGHT-20)
-    fig.show()
-    return
-
-def circular(adjacency_list, euclidean=False):
+def circular(adjacency_list, lines='euclidean'):
     '''
     Draw the arc type representation of the provided network.
     Parameters
@@ -176,10 +126,10 @@ def circular(adjacency_list, euclidean=False):
             i, j = vert_dict[vertex], vert_dict[neighbour]
             x1, y1 = np.cos(angle[i]), np.sin(angle[i])
             x2, y2 = np.cos(angle[j]), np.sin(angle[j])
-            if euclidean or abs((angle[i]-angle[j])%np.pi) < 1e-5:
-                x_path, y_path = line(x1, y1, x2, y2, color_resolution+1)
+            if not hyperbolic or abs((angle[i]-angle[j])%np.pi) < 1e-5:
+                x_path, y_path = euclidean_line(x1, y1, x2, y2, color_resolution+1)
             else:
-                x_path, y_path = circular_arc(x1, y1, x2, y2, edge_resolution)
+                x_path, y_path = poincare_line(x1, y1, x2, y2, edge_resolution)
             fig.add_traces(edge_trace(x_path, y_path, 1, color_resolution))
 
     # draw the vertices
