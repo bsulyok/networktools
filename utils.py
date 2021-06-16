@@ -68,29 +68,27 @@ def identify_components(adjacency_list):
 def disjunct_components(adjacency_list, vertices=None):
     if vertices is None:
         vertices = {vertex:{} for vertex in adjacency_list}
-    disjunct_comps = {}
-    component_size = {}
+    disjunct_comps, component_size = [], []
     component_id = dict.fromkeys(adjacency_list, None)
     component_counter = 0
     vertex_queue = queue.Queue()
     for root in adjacency_list:
         if component_id[root] is None:
-            disjunct_comps[component_counter] = {'adjacency_list':{root:adjacency_list[root]}, 'vertices':{root:vertices[root]}}
-            component_size[component_counter] = 1
+            disjunct_comps.append([{root:adjacency_list[root]}, {root:vertices[root]}])
+            component_size.append(1)
             component_id[root] = component_counter
             vertex_queue.put(root)
             while not vertex_queue.empty():
                 vertex = vertex_queue.get()
-                disjunct_comps[component_counter]['adjacency_list'].update({vertex:adjacency_list[root]})
-                disjunct_comps[component_counter]['vertices'].update({vertex:vertices[root]})
+                disjunct_comps[component_counter][0].update({vertex:adjacency_list[vertex]})
+                disjunct_comps[component_counter][1].update({vertex:vertices[vertex]})
                 for neighbour in adjacency_list[vertex]:
                     if component_id[neighbour] is None:
                         component_size[component_counter] += 1
                         component_id[neighbour] = component_counter
                         vertex_queue.put(neighbour)
             component_counter += 1
-    
-    return {id:disjunct_comps[comp] for id, comp in enumerate(sorted(component_size, key=lambda c:component_size[c], reverse=True))}
+    return [disjunct_comps[idx] for idx in sorted(range(len(component_size)), key=lambda x:component_size[x], reverse=True)]
 
 def breadth_first_distance(adjacency_list, source, target=None):
     '''
@@ -121,31 +119,25 @@ def dijsktra(adjacency_list, source, target=None, weight_attribute='weight'):
     '''
     N = len(adjacency_list)
     visited = dict.fromkeys(adjacency_list, False)
-    visited_count = 0
     dist = dict.fromkeys(adjacency_list, inf)
     dist[source] = 0
     queue_size = 1
     vertex_queue = [ (0, source) ]
     heapq.heapify(vertex_queue)
-    while visited_count < N:
-        try:
-            print(len(vertex_queue), visited_count)
-            vertex_dist, vertex = heapq.heappop(vertex_queue)
-            queue_size -= 1
-            if vertex == target:
-                return vertex_dist
-            if not visited[vertex]:
-                visited[vertex] = True
-                visited_count += 1
-                for neighbour, attributes in adjacency_list[vertex].items():
-                    if not visited[neighbour]:
-                        neighbour_dist = vertex_dist + attributes[weight_attribute]
-                        if neighbour_dist < dist[neighbour]:
-                            dist[neighbour] = neighbour_dist
-                            heapq.heappush(vertex_queue, (neighbour_dist, neighbour))
-                            queue_size += 1
-        except:
-            break
+    while vertex_queue:
+        vertex_dist, vertex = heapq.heappop(vertex_queue)
+        queue_size -= 1
+        if vertex == target:
+            return vertex_dist
+        if not visited[vertex]:
+            visited[vertex] = True
+            for neighbour, attributes in adjacency_list[vertex].items():
+                if not visited[neighbour]:
+                    neighbour_dist = vertex_dist + attributes[weight_attribute]
+                    if neighbour_dist < dist[neighbour]:
+                        dist[neighbour] = neighbour_dist
+                        heapq.heappush(vertex_queue, (neighbour_dist, neighbour))
+                        queue_size += 1
     return dist
 
 def distance(adjacency_list, source=None, target=None, weight_attribute=None):
@@ -164,18 +156,34 @@ def distance(adjacency_list, source=None, target=None, weight_attribute=None):
         else:
             return dijsktra(adjacency_list, source, target, weight_attribute)
 
-def minimum_depth_spanning_tree(adjacency_list, root=None, directed=False):
-    depth = dict.fromkeys(adjacency_list, None)
+def minimum_depth_spanning_tree2(adjacency_list, root=None, directed=False):
     vertex_queue = queue.Queue()
-    degree = {}
+    tree_adjacency_list = {vertex:{} for vertex in adjacency_list}
+    degree, depth = {}, {}
+    visited = 0
     for vertex, neighbourhood in adjacency_list.items():
         deg = len(neighbourhood)
         degree[vertex] = deg
         if deg == 1:
             vertex_queue.put(vertex)
+            depth[vertex] = 0
+        else:
+            depth[vertex] = None
+
     while not vertex_queue.empty():
+        visited += 1
         vertex = vertex_queue.get()
-        
+        for neighbour in adjacency_list[vertex]:
+            if depth[neighbour] is None:
+                depth[neighbour] = depth[vertex] + 1
+                tree_adjacency_list[neighbour].update({vertex:adjacency_list[neighbour][vertex]})
+                degree[neighbour] -= 1
+                vertex_queue.put(neighbour)
+                break
+    print(visited)
+    
+
+
 
 def minimum_depth_spanning_tree(adjacency_list, root=None, directed=False):
     '''

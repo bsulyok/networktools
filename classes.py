@@ -14,14 +14,10 @@ class Graph:
     # magic functions #
     ###################
 
-    def __init__(self, graph_data=None):
+    def __init__(self, adjacency_list=None, vertices=None):
         # create empty graph
-        if graph_data is None:
-            self._adjacency = dict()
-            self._vertices = dict()
-        else:
-            self._adjacency = graph_data['adjacency_list']
-            self._vertices = graph_data['vertices']
+        self._adjacency = {} if adjacency_list is None else adjacency_list
+        self._vertices = {} if vertices is None else vertices
         self._successor = self._adjacency
         self._predecessor = self._adjacency
         self.representation = None
@@ -195,19 +191,16 @@ class Graph:
         return utils.identify_components(self._adjacency)
 
     def divide(self):
-        asd = utils.disjunct_components(self._adjacency, self._vertices)
-        bsd = {}
-        for idx, graph_data in asd.items():
-            bsd[idx] =Graph(graph_data=graph_data)
-        return bsd
-        #return {idx:Graph(graph_data) for idx, graph_data in utils.disjunct_components(self._adjacency, self._vertices).items()}
+        graphs = {}
+        for idx, (adjacency_list, vertices) in utils.disjunct_components(self._adjacency, self._vertices):
+            graphs[idx] = Graph(adjacency_list=adjacency_list, vertices=vertices)
+        return graphs
 
     def defragment_indices(self, start=0):
         self._adjacency, self._vertices = utils.defragment_indices(self._adjacency, self._vertices, start=start)
 
     def largest_component(self):
-        largest_comp = utils.disjunct_components(self._adjacency, self._vertices)[0]
-        self._adjacency, self._vertices = largest_comp['adjacency_list'], largest_comp['vertices']
+        self._adjacency, self._vertices = utils.disjunct_components(self._adjacency, self._vertices)[0]
 
     def greedy_routing_score(self, normalized=False):
         if normalized:

@@ -60,11 +60,11 @@ def draw(adjacency_list, vertices=None, representation='euclidean', vertex_scale
     # draw the vertices
     N = len(adjacency_list)
     marker_x, marker_y, marker_size, marker_color = np.empty(N), np.empty(N), np.empty(N), np.empty(N)
-    for vertex, attributes in vertices.items():
-        marker_x[vertex] = attributes['coord'].get('r') * np.cos(attributes['coord'].get('phi'))
-        marker_y[vertex] = attributes['coord'].get('r') * np.sin(attributes['coord'].get('phi'))
-        marker_color[vertex] = attributes.get('color', default_vertex_color)
-        marker_size[vertex] = attributes.get('size', 1) * vertex_scale
+    for idx, attributes in enumerate(vertices.values()):
+        marker_x[idx] = attributes['coord'].get('r') * np.cos(attributes['coord'].get('phi'))
+        marker_y[idx] = attributes['coord'].get('r') * np.sin(attributes['coord'].get('phi'))
+        marker_color[idx] = attributes.get('color', default_vertex_color)
+        marker_size[idx] = attributes.get('size', 1) * vertex_scale
     fig.add_trace(go.Scattergl(x=marker_x, y=marker_y, mode='markers', marker_size=marker_size, marker_color=marker_color, showlegend=False, marker_reversescale=True, marker_opacity=1))
 
     # figure settings
