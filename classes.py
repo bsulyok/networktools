@@ -16,11 +16,17 @@ class Graph:
 
     def __init__(self, adjacency_list=None, vertices=None):
         # create empty graph
-        self._adjacency = {} if adjacency_list is None else adjacency_list
-        self._vertices = {} if vertices is None else vertices
+        if adjacency_list is None:
+            self._adjacency = {}
+            self._vertices = {}
+        else:
+            self._adjacency = adjacency_list
+            if vertices is None:
+                self._vertices = {vertex:{} for vertex in adjacency_list}
+            else:
+                self._vertices = vertices
         self._successor = self._adjacency
         self._predecessor = self._adjacency
-        self.representation = None
 
     def __len__(self):
         return len(self._vertices)
@@ -72,6 +78,10 @@ class Graph:
     def vert(self):
         return self._vertices
 
+    @property
+    def degree(self):
+        return {vertex:len(neighbourhood) for vertex, neighbourhood in self._adjacency.items()}
+
     #####################
     # vertex operations #
     #####################
@@ -116,7 +126,7 @@ class Graph:
     ###################
 
     def write(self, filename='test.txt'):
-        readwrite.write_graph(self._adjacency, filename)
+        readwrite.write_adjacency_list(self._adjacency, filename)
 
     ######################
     # topology iterators #
@@ -133,13 +143,7 @@ class Graph:
     ###################
 
     def draw(self, representation='euclidean', **attr):
-        if self.representation is None:
-            vertices, representation = None, 'euclidean'
-        elif representation is None:
-            vertices, representation = self._vertices, self.representation
-        else:
-            vertices = self._vertices
-        drawing.draw(self._adjacency, vertices=vertices, representation=representation, **attr)
+        drawing.draw(self._adjacency, vertices=self._vertices, representation=representation, **attr)
 
     def draw_arc(self):
         drawing.arc(self._successor)
@@ -158,8 +162,8 @@ class Graph:
         self._vertices = embedding.greedy_embedding(self._adjacency, self._vertices, representation=representation)
         self.representation = representation
 
-    def embed_ncMCE(self, representation='hyperbolic_polar'):
-        self._vertices = embedding.ncMCE(self._adjacency, self._vertices, angular_adjustment=embedding.equidistant_adjustment, representation=representation)
+    def embed_ncMCE(self, representation='hyperbolic_polar', angular_adjustment=embedding.equidistant_adjustment):
+        self._vertices = embedding.ncMCE(self._adjacency, self._vertices, angular_adjustment=angular_adjustment, representation=representation)
         self.representation = representation
 
     def embed_hypermap(self, representation='hyperbolic_polar'):
@@ -184,9 +188,6 @@ class Graph:
     def ispercolating(self):
         return utils.ispercolating(self._adjacency)
 
-    def degree(self):
-        return {vertex:len(neighbourhood) for vertex, neighbourhood in self._adjacency.items()}
-
     def components(self):
         return utils.identify_components(self._adjacency)
 
@@ -200,7 +201,8 @@ class Graph:
         self._adjacency, self._vertices = utils.defragment_indices(self._adjacency, self._vertices, start=start)
 
     def largest_component(self):
-        self._adjacency, self._vertices = utils.disjunct_components(self._adjacency, self._vertices)[0]
+        adjacency_list, vertices = utils.disjunct_components(self._adjacency, self._vertices)[0]
+        return Graph(adjacency_list=adjacency_list, vertices=vertices)
 
     def greedy_routing_score(self, normalized=False):
         if normalized:
@@ -218,10 +220,12 @@ class Graph:
     def fill_vertices(self, attribute_name='size', generator=random):
         for vertex in self.vertices():
             vertex.update({attribute_name: generator() })
+        self._vertex_attributes[attribute_name] = type(generator())
 
     def fill_edges(self, attribute_name='weight', generator=random):
         for vertex, neighbour, attributes in self.edges():
             attributes.update({attribute_name: generator() })
+        self._edge_attributes[attribute_name] = type(generator())
 
     def fill_vertices(self, data):
         if len(data) != len(self.vertices):

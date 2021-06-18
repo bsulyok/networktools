@@ -48,7 +48,7 @@ def draw(adjacency_list, vertices=None, representation='euclidean', vertex_scale
 
     # draw the edges
     for vertex, neighbour, attributes in edge_iterator(adjacency_list):
-        if vertex < neighbour:
+        if neighbour < vertex:
             coord_1, coord_2 = vertices[vertex]['coord'], vertices[neighbour]['coord']
             r1, phi1 = coord_1.get('r'), coord_1.get('phi')
             r2, phi2 = coord_2.get('r'), coord_2.get('phi')
@@ -90,7 +90,7 @@ def arc(adjacency_list):
 
     # draw the edges
     for vertex, neighbour, attributes in edge_iterator(adjacency_list):
-        if vertex < neighbour:
+        if neighbour < vertex:
             p1, p2 = X[vert_dict[vertex]], X[vert_dict[neighbour]]
             path = semi_circle(p1, p2)
             fig.add_trace(go.Scattergl(x=path.real, y=path.imag, mode='lines', line_color='red', line_width=1))
@@ -122,7 +122,7 @@ def circular(adjacency_list, lines='euclidean'):
 
     # draw the edges
     for vertex, neighbour, attributes in edge_iterator(adjacency_list):
-        if vertex < neighbour:
+        if neighbour < vertex:
             i, j = vert_dict[vertex], vert_dict[neighbour]
             x1, y1 = np.cos(angle[i]), np.sin(angle[i])
             x2, y2 = np.cos(angle[j]), np.sin(angle[j])

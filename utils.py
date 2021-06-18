@@ -14,9 +14,9 @@ def merge_components(adjacency_list_1, vertices_1, adjacency_list_2, vertices_2)
     vertices_1.update(vertices_2)
     return adjacency_list_1, vertices_1
 
-def defragment_indices(adjacency_list, vertices, start=0):
-    N = len(vertices)
-    if list(vertices) == list(range(N)):
+def defragment_indices(adjacency_list, vertices=None, start=0):
+    N = len(adjacency_list)
+    if list(adjacency_list) == list(range(N)):
         return adjacency_list, vertices
     new_adjacency_list, new_vertices = {vertex:{} for vertex in range(start, N+start)}, {vertex:{} for vertex in range(start, N+start)}
     relabel = {old:new for new, old in enumerate(vertices, start=start)}
@@ -156,7 +156,7 @@ def distance(adjacency_list, source=None, target=None, weight_attribute=None):
         else:
             return dijsktra(adjacency_list, source, target, weight_attribute)
 
-def minimum_depth_spanning_tree2(adjacency_list, root=None, directed=False):
+def minimum_depth_spanning_tree2(adjacency_list):
     vertex_queue = queue.Queue()
     tree_adjacency_list = {vertex:{} for vertex in adjacency_list}
     degree, depth = {}, {}
@@ -169,22 +169,20 @@ def minimum_depth_spanning_tree2(adjacency_list, root=None, directed=False):
             depth[vertex] = 0
         else:
             depth[vertex] = None
-
     while not vertex_queue.empty():
         visited += 1
         vertex = vertex_queue.get()
         for neighbour in adjacency_list[vertex]:
-            if depth[neighbour] is None:
-                depth[neighbour] = depth[vertex] + 1
+            if neighbour not in tree_adjacency_list[vertex]:
+                if depth[neighbour] is None or depth[neighbour] < depth[vertex] + 1:
+                    depth[neighbour] = depth[vertex] + 1
                 tree_adjacency_list[neighbour].update({vertex:adjacency_list[neighbour][vertex]})
                 degree[neighbour] -= 1
-                vertex_queue.put(neighbour)
+                if degree[neighbour] == 1:
+                    vertex_queue.put(neighbour)
                 break
-    print(visited)
+    return visited / len(adjacency_list)
     
-
-
-
 def minimum_depth_spanning_tree(adjacency_list, root=None, directed=False):
     '''
     Find the minimum depth spanning tree rooted at root of the provided graph.
