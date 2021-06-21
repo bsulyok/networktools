@@ -1,5 +1,7 @@
 from common import edge_iterator
 import csv
+import os
+import classes
 
 def n_to_data(n):
     if n <= 62:
@@ -100,54 +102,63 @@ def data_parser(string):
                 adjacency_list[v].update({u:{}})
     return adjacency_list
 
-def write_adjacency_list(adjacency_list, filename='test.txt'):
-    with open(filename, mode='wb') as outfile:
-        for b in graph_parser(adjacency_list):
-            outfile.write(b)
+def vertex_feeder(vertices, attributes):
+    yield ['vertex'] + list(attributes)
+    for vertex, attr in vertices.items():
+        yield [vertex] + [attr.get(attribute) for attribute in attributes]   
 
-def read_adjacency_list(filename='test.txt'):
-    with open(filename, mode='rb') as infile:
-        string = infile.read()
-    return data_parser(string)
-
-def csv_feeder(adjacency_list, attributes):
-    yield ["vertex=<class 'int'>", "neighbour=<class 'int'>"] + [attr + '=' + str(attr_type) for attr, attr_type in attributes.items()]
+def edge_feeder(adjacency_list, attributes):
+    yield ['vertex', 'neighbour'] + list(attributes)
     for vertex, neighbour, attr in edge_iterator(adjacency_list):
         if neighbour < vertex:
             yield [vertex, neighbour] + [attr.get(attribute) for attribute in attributes]
 
-def write_graph(adjacency_list, filename, attributes):
-    with open(filename, mode='w', newline='') as outfile:
-        writer = csv.writer(outfile)
-        writer.writerows(csv_feeder(adjacency_list, attributes))
+def write_graph(adjacency_list, vertices, path, vertex_attributes=[], edge_attributes=[], delimiter='\t'):
+    if not os.path.exists(path):
+        os.mkdir(path)
+    with open(path + '/vertices.txt', mode='w', newline='') as outfile:
+        csv.writer(outfile, delimiter=delimiter).writerows(vertex_feeder(vertices, vertex_attributes))
+    with open(path + '/edges.txt', mode='w', newline='') as outfile:
+        csv.writer(outfile, delimiter=delimiter).writerows(edge_feeder(adjacency_list, edge_attributes))
 
-def infer_type(attr_type):
-    if attr_type == "<class 'int'>":
+def infer_type(string):
+    try:
+        int(string)
         return int
-    elif attr_type == "<class 'float'>":
-        return float
-    elif attr_type == "<class 'str'>":
-        return str
-    elif attr_type == "<class 'complex'>":
-        return complex
+    except:
+        try:
+            float(string)
+            return float
+        except:
+            return str
     
-def read_graph(filename):
-    with open(filename, mode='r', newline='') as infile:
-        reader = csv.reader(infile, delimiter=',')
-        attributes = {}
-        for label in next(reader).split(',')[2:]:
-            attr, attr_type = label.split('=')
-            attributes[attr] = infer_type(attr_type)
-        adjacency_list = {}
+def read_graph(path, delimiter='\t'):
+    vertices = {}
+    with open(path + '/vertices.txt', mode='r', newline='') as infile:
+        reader = csv.reader(infile, delimiter=delimiter)
+        header = next(reader)
+        row = next(reader)
+        attributes = {attribute:infer_type(string) for attribute, string in zip(header[1:], row[1:])}
+        vertices[int(row[0])] = {attribute:attribute_type(row[i]) for i, (attribute, attribute_type) in enumerate(attributes.items(), 1)}
         for row in reader:
-            (vertex, neighbour), attr = row[:2], row[2:]
-            vertex, neighbour, attr = int(row[0]), int(row[1]), row[2:]
-            if neighbour not in adjacency_list:
-                adjacency_list[neighbour] = {}
-            if vertex not in adjacency_list:
-                adjacency_list[vertex] = {}
-            adjacency_list[vertex][neighbour] = {attribute:attribute_type(attr[idx]) for idx, (attribute, attribute_type) in enumerate(attr.items())}
-            adjacency_list[vertex][neighbour] = {attributes[i]:attribute for i, attribute in enumerate(attr)}
-            adjacency_list[neighbour][vertex] = {attributes[i]:attribute for i, attribute in enumerate(attr)}
-            print(row)
-    return adjacency_list
+            vertices[int(row[0])] = {attribute:attribute_type(row[i]) for i, (attribute, attribute_type) in enumerate(attributes.items(), 1)}
+    
+    adjacency_list = {vertex:{} for vertex in vertices}
+    with open(path + '/edges.txt', mode='r', newline='') as infile:
+        reader = csv.reader(infile, delimiter=delimiter)
+        header = next(reader)
+        row = next(reader)
+        attributes = {attribute:infer_type(row[i]) for i, attribute in enumerate(header)}
+        attributes = {attribute:infer_type(string) for attribute, string in zip(header[2:], row[2:])}
+        vertex, neighbour = int(row[0]), int(row[1])
+        edge_attributes = {attribute:attribute_type(row[i]) for i, (attribute, attribute_type) in enumerate(attributes.items(), 2)}
+        adjacency_list[vertex][neighbour] = adjacency_list[vertex][neighbour] = edge_attributes
+        for row in reader:
+            vertex, neighbour = int(row[0]), int(row[1])
+            edge_attributes = {attribute:attribute_type(row[i]) for i, (attribute, attribute_type) in enumerate(attributes.items(), 2)}
+            adjacency_list[vertex][neighbour] = adjacency_list[neighbour][vertex] = edge_attributes
+    return adjacency_list, vertices
+
+def load_graph(path):
+    adjacency_list, vertices = read_graph(path)
+    return classes.Graph(adjacency_list, vertices)

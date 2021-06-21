@@ -16,14 +16,14 @@ def test_badness_real():
         for vertex, attributes in G.vert.items():
             attributes.update({'color':badness[vertex]/max_badness})
             attributes.update({'size':badness[vertex]/max_badness})
-        G.draw(representation='euclidean', vertex_scale=50)
+        G.draw(representation='hyperbolic_polar', vertex_scale=50)
         G.embed_ncMCE(angular_adjustment=embedding.circular_adjustment)
         badness = G.greedy_routing_badness()
         max_badness = max(badness.values())
         for vertex, attributes in G.vert.items():
             attributes.update({'color':badness[vertex]/max_badness})
             attributes.update({'size':badness[vertex]/max_badness})
-        G.draw(representation='euclidean', vertex_scale=50)
+        G.draw(representation='hyperbolic_polar', vertex_scale=50)
     return
 
 def test_badness():

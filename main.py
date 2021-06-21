@@ -10,9 +10,12 @@ import common
 import readwrite
 import csv
 import testing
+from copy import deepcopy
+import clustering
+import plotly.graph_objects as go
+import math
 
 def main():
-    testing.test_badness_real()
     return
 
 if __name__ == "__main__":

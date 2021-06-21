@@ -1,9 +1,5 @@
-# My network modul containing handy tools.
+# My network modul containing handy tools. Inspired by networkx.
 
 
 # External python packages used:
 `numpy`, `plotly`
-
-# Notes
-Heavy use of expressions with list comprehension.
-

@@ -1,9 +1,44 @@
 import numpy as np
 from itertools import combinations
-from math import inf, pi, sin, cos
+from math import inf, floor
 import plotly.graph_objects as go
 
-HEIGHT = 1000
+def hue_to_rgb(H):
+    X = 255 * ( 1 - abs( ( (6*H) % 2 ) - 1 ) )
+    print(X)
+    if 0 <= H < 1/6:
+        return 'rgb(255,{},0)'.format(floor(X))
+    elif 1/6 <= H < 2/6:
+        return 'rgb({},255,0)'.format(floor(X))
+    elif 2/6 <= H < 3/6:
+        return 'rgb(0,255,{})'.format(floor(X))
+    elif 3/6 <= H < 4/6:
+        return 'rgb(0,{},255)'.format(floor(X))
+    elif 4/6 <= H < 5/6:
+        return 'rgb({},0,255)'.format(floor(X))
+    elif 5/6 <= H < 1:
+        return 'rgb(255,0,{})'.format(floor(X))
+
+def hsv_to_rgb(H, S, V):
+    C = S * 255 * V
+    M = 255 * V - C 
+    X = C * ( 1 - abs( ( (H / 60) % 2) -1 ) )
+    if 0 <= H < 60:
+        return [floor(C+M), floor(X+M), floor(M)]
+    elif 60 <= H < 120:
+        return [floor(X+M), floor(C+M), floor(M)]
+    elif 120 <= H < 180:
+        return [floor(M), floor(C+M), floor(X+M)]
+    elif 180 <= H < 240:
+        return [floor(M), floor(X+M), floor(C+M)]
+    elif 240 <= H < 300:
+        return [floor(X+M), floor(M), floor(C+M)]
+    elif 300 <= H < 360:
+        return [floor(C+M), floor(M), floor(X+M)]
+
+def generate_distinct_colours(N, S=0.5, V=0.5):
+    S, V = 0.5, 0.5
+    return [hsv_to_rgb(360*i/N,S,V) for i in range(N)]
 
 def semi_circle(p1, p2, number_of_samples=100):
     return (p1+p2)/2 + abs(p1-p2) / 2 * np.exp(1j * np.linspace(0, np.pi, number_of_samples))

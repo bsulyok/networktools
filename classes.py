@@ -1,6 +1,7 @@
 import drawing, embedding
-from common import edge_iterator, ienumerate
+from common import edge_iterator
 from random import random
+import clustering
 import utils
 import readwrite
 
@@ -125,8 +126,8 @@ class Graph:
     # writing to file #
     ###################
 
-    def write(self, filename='test.txt'):
-        readwrite.write_adjacency_list(self._adjacency, filename)
+    def write(self, path, vertex_attributes=[], edge_attributes=[]):
+        readwrite.write_graph(self._adjacency, self._vertices, path, vertex_attributes, edge_attributes)
 
     ######################
     # topology iterators #
@@ -136,14 +137,14 @@ class Graph:
         return edge_iterator(self._successor)
 
     def vertices(self):
-        return iter(self._vertices)
+        return iter(self._vertices.items())
 
     ###################
     # drawing methods #
     ###################
 
-    def draw(self, representation='euclidean', **attr):
-        drawing.draw(self._adjacency, vertices=self._vertices, representation=representation, **attr)
+    def draw(self, **kwargs):
+        drawing.draw(self._adjacency, vertices=self._vertices, **kwargs)
 
     def draw_arc(self):
         drawing.arc(self._successor)
@@ -173,6 +174,21 @@ class Graph:
     def embed_mercator(self, representation='hyperbolic_polar'):
         self._vertices = embedding.mercator(self._adjacency, self._vertices, representation=representation)
         self.representation = representation
+
+    #########################
+    # clustering algorithms #
+    #########################
+
+    def clustering_label_propagation(self):
+        label = clustering.asynchronous_label_propagation(self._adjacency, defragment_labels=True)
+        max_label = max(label.values())
+        if max_label == 0:
+            return False
+        for vertex, lab in label.items():
+            self._vertices[vertex].update({'color':lab/max_label})
+        for vertex, neighbour, attributes in self.edges():
+            if label[vertex] == label[neighbour]:
+                attributes.update({'color':'yellow'})
 
     ##############################
     # graph theoretical distance #
@@ -218,18 +234,12 @@ class Graph:
     ##################################
 
     def fill_vertices(self, attribute_name='size', generator=random):
-        for vertex in self.vertices():
-            vertex.update({attribute_name: generator() })
-        self._vertex_attributes[attribute_name] = type(generator())
+        for vertex, attributes in self.vertices():
+            attributes.update({attribute_name: generator() })
 
     def fill_edges(self, attribute_name='weight', generator=random):
         for vertex, neighbour, attributes in self.edges():
             attributes.update({attribute_name: generator() })
-        self._edge_attributes[attribute_name] = type(generator())
-
-    def fill_vertices(self, data):
-        if len(data) != len(self.vertices):
-            return 'Mismatch in the number or attributes.'
 
 ##################
 # DIRECTED GRAPH #

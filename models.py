@@ -94,7 +94,7 @@ def stochastic_block_model(s, P=None):
                 P[i][j] = rnd
                 P[i][j] = rnd
 
-    P = SBMP(s) if P is None else P
+    #P = SBMP(s) if P is None else P
     z = [i for i,groupsize in enumerate(s) for _ in range(groupsize)]
     G = empty_graph(N)
 
@@ -220,7 +220,7 @@ def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, representati
         final_radial_coordinate = np.tanh( final_radial_coordinate / 2 ) ** 2
     for i, (r, phi) in enumerate(zip(final_radial_coordinate, angular_coordinate)):
         #G.add_vertex(i, coord=r*np.exp(1j*phi))
-        G.add_vertex(i, coord={'r':r, 'phi':phi})
+        G.add_vertex(i, r=r, phi=phi)
 
     for i in range(N):
 

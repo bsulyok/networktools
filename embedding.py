@@ -103,12 +103,12 @@ def greedy_embedding(adjacency_list, vertices=None, representation='hyperbolic_p
         r = abs(coord)
         if representation == 'hyperbolic_polar':
             r = np.arccosh( 1 + 2 * r**2 / (1 - r**2) )
-        vertices[vertex].update({'coord' : {'r':r, 'phi': np.arctan2(coord.imag, coord.real)}})
+        vertices[vertex].update({'r':r, 'phi': np.arctan2(coord.imag, coord.real)})
         for child_id, child in enumerate(children[vertex], 1):
             child_transform = B[child_id] @ A @ transform
             iterative_coordination_search(child, child_transform)
 
-    vertices[root].update({'coord':{'r':0, 'phi':0}})
+    vertices[root].update({'r':0, 'phi':0})
     # iteratively find the coordinates of all vertices
     for child_id, child in enumerate(children[root]):
         child_transform = B[child_id] @ root_transform
@@ -136,7 +136,7 @@ def ncMCE(adjacency_list, vertices=None, angular_adjustment=equidistant_adjustme
     if representation == 'poincare':
         radial_coordinates = np.tanh(radial_coordinates/2) ** 2
     for idx, vertex in enumerate(vertices):
-        vertices[vertex].update({'coord' : {'r':radial_coordinates[idx], 'phi': angular_coordinates[idx] }})
+        vertices[vertex].update({'r':radial_coordinates[idx], 'phi': angular_coordinates[idx] })
     return vertices
 
 def mercator(adjacency_list, vertices=None, representation='hyperbolic_polar'):
