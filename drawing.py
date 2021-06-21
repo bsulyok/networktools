@@ -5,7 +5,7 @@ import utils
 import random
 from math import pi, sin, cos
 from common import edge_iterator
-from drawing_tools import euclidean_line, semi_circle, poincare_line, edge_trace, kamada_kawai, hyperbolic_polar_line, hue_to_rgb
+from drawing_tools import euclidean_line, semi_circle, poincare_line, edge_trace, kamada_kawai, hyperbolic_polar_line
 
 HEIGHT = 1000
 
@@ -44,9 +44,7 @@ def draw(adjacency_list, vertices=None, **kwargs):
     vertex_color_attribute = kwargs.get('vertex_color_attribute', 'color')
     vertex_size_attribute = kwargs.get('vertex_size_attribute', 'size')
     edge_scale = kwargs.get('edge_scale', 1)
-    default_edge_width = kwargs.get('default_vertex_size', 1)
-    default_edge_color = kwargs.get('default_vertex_color', 1/2)
-    edge_color_attribute = kwargs.get('edge_color_attribute', 'color')  
+    default_edge_width = kwargs.get('default_vertex_size', 1) 
     edge_width_attribute = kwargs.get('edge_width_attribute', 'width')
     
     fig = go.Figure()
@@ -56,23 +54,40 @@ def draw(adjacency_list, vertices=None, **kwargs):
         if neighbour < vertex:
             path = path_function( vertices[vertex]['r'], vertices[vertex]['phi'], vertices[neighbour]['r'], vertices[neighbour]['phi'])
             line_width = attributes.get(edge_width_attribute, default_edge_width) * edge_scale
-            line_color = hue_to_rgb(attributes.get(edge_color_attribute, default_edge_color))
-            #line_color = 'blue'
-            #print(line_color)
-            #line_color = attributes.get(edge_color_attribute, default_edge_color)
-            fig.add_trace(go.Scattergl(x=path[0], y=path[1], mode='lines', line_color=line_color, hoverinfo='skip', line_width=line_width))
+            fig.add_trace(go.Scattergl(
+                    x=path[0],
+                    y=path[1],
+                    mode='lines',
+                    line_color='rgb(125,125,125)',
+                    hoverinfo='skip',
+                    line_width=line_width
+            ))
 
     # draw the vertices
     N = len(adjacency_list)
-    marker_x, marker_y, marker_size, marker_color, marker_name = np.empty(N), np.empty(N), np.empty(N), np.empty(N), []#,np.empty(N,dtype=str)
+    marker_x, marker_y, marker_size, marker_color, marker_name = np.empty(N), np.empty(N), np.empty(N), np.empty(N), []
     for idx, attributes in enumerate(vertices.values()):
         marker_x[idx] = attributes.get('r') * np.cos(attributes.get('phi'))
         marker_y[idx] = attributes.get('r') * np.sin(attributes.get('phi'))
         marker_color[idx] = attributes.get(vertex_color_attribute, default_vertex_color)
         marker_size[idx] = attributes.get(vertex_size_attribute, default_vertex_size) * vertex_scale
         #marker_name[idx] = 'asd' #attributes.get('name', 'ASSA')
-        marker_name.append(attributes.get('name', 'ASSA'))
-    fig.add_trace(go.Scattergl(x=marker_x, y=marker_y, mode='markers', hoverinfo='text+x+y', hovertext=marker_name, marker_cmin=0, marker_cmax=1, marker_colorscale='HSV', marker_size=marker_size, marker_color=marker_color, showlegend=False, marker_reversescale=True, marker_opacity=1))
+        marker_name.append(attributes.get('name', 'vertex_{}'.format(idx)))
+    fig.add_trace(go.Scattergl(
+        x=marker_x,
+        y=marker_y,
+        mode='markers',
+        hoverinfo='text+x+y',
+        hovertext=marker_name,
+        marker_cmin=0,
+        marker_cmax=1,
+        marker_colorscale='HSV_r',
+        marker_size=marker_size,
+        marker_color=marker_color,
+        showlegend=False,
+        marker_reversescale=True,
+        marker_opacity=1
+    ))
 
     # figure settings
     fig.update_xaxes(tickvals=[], zeroline=False)

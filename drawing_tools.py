@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 
 def hue_to_rgb(H):
     X = 255 * ( 1 - abs( ( (6*H) % 2 ) - 1 ) )
-    print(X)
     if 0 <= H < 1/6:
         return 'rgb(255,{},0)'.format(floor(X))
     elif 1/6 <= H < 2/6:

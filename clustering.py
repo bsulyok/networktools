@@ -44,7 +44,6 @@ def asynchronous_label_propagation(adjacency_list, defragment_labels=False):
                     neighbour_labels[neighbour_label] = 1
             new_label = select_new_label(neighbour_labels)
             if new_label != label[vertex]:
-                print(vertex)
                 running = True
                 label[vertex] = new_label
             

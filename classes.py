@@ -181,14 +181,10 @@ class Graph:
 
     def clustering_label_propagation(self):
         label = clustering.asynchronous_label_propagation(self._adjacency, defragment_labels=True)
-        max_label = max(label.values())
-        if max_label == 0:
-            return False
-        for vertex, lab in label.items():
-            self._vertices[vertex].update({'color':lab/max_label})
-        for vertex, neighbour, attributes in self.edges():
-            if label[vertex] == label[neighbour]:
-                attributes.update({'color':'yellow'})
+        cluster_count = max(label.values())+1
+        if cluster_count != 1:
+            for vertex, lab in label.items():
+                self._vertices[vertex].update({'color':lab/cluster_count})
 
     ##############################
     # graph theoretical distance #
