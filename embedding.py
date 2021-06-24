@@ -74,11 +74,6 @@ def greedy_embedding(adjacency_list, vertices=None, representation='hyperbolic_p
     else:
         vertices = deepcopy(vertices)
     
-    #root, max_edge = 0, len(adjacency_list[0])
-    #for vertex, neighbourhood in adjacency_list.items():
-    #    if max_edge < len(neighbourhood):
-    #        root, max_edge = vertex, len(neighbourhood)
-
     min_dist = {vertex:min(dist.values()) for vertex, dist in utils.distance(adjacency_list).items()}
     root = min(min_dist, key=lambda vertex:min_dist[vertex])
 

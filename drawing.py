@@ -38,7 +38,7 @@ def draw(adjacency_list, vertices=None, **kwargs):
     if vertices is None:
         vertices = {vertex : {'r':random.random(), 'phi':2*np.pi*random.random()} for vertex in adjacency_list}
     path_function = representation_dict.get(kwargs.get('representation', 'euclidean'), euclidean_line)
-    vertex_scale = kwargs.get('vertex_scale', 5)
+    vertex_scale = kwargs.get('vertex_scale', 3)
     default_vertex_color = kwargs.get('default_vertex_color', 1)
     default_vertex_size = kwargs.get('default_vertex_size', 5)
     vertex_color_attribute = kwargs.get('vertex_color_attribute', 'color')
@@ -66,13 +66,12 @@ def draw(adjacency_list, vertices=None, **kwargs):
     # draw the vertices
     N = len(adjacency_list)
     marker_x, marker_y, marker_size, marker_color, marker_name = np.empty(N), np.empty(N), np.empty(N), np.empty(N), []
-    for idx, attributes in enumerate(vertices.values()):
+    for idx, (vertex, attributes) in enumerate(vertices.items()):
         marker_x[idx] = attributes.get('r') * np.cos(attributes.get('phi'))
         marker_y[idx] = attributes.get('r') * np.sin(attributes.get('phi'))
         marker_color[idx] = attributes.get(vertex_color_attribute, default_vertex_color)
         marker_size[idx] = attributes.get(vertex_size_attribute, default_vertex_size) * vertex_scale
-        #marker_name[idx] = 'asd' #attributes.get('name', 'ASSA')
-        marker_name.append(attributes.get('name', 'vertex_{}'.format(idx)))
+        marker_name.append(attributes.get('name', 'vertex_{}'.format(vertex)))
     fig.add_trace(go.Scattergl(
         x=marker_x,
         y=marker_y,

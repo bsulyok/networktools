@@ -180,7 +180,7 @@ class Graph:
     #########################
 
     def clustering_label_propagation(self):
-        label = clustering.asynchronous_label_propagation(self._adjacency, defragment_labels=True)
+        label = clustering.asynchronous_label_propagation(self._adjacency)
         cluster_count = max(label.values())+1
         if cluster_count != 1:
             for vertex, lab in label.items():
@@ -200,20 +200,19 @@ class Graph:
     def ispercolating(self):
         return utils.ispercolating(self._adjacency)
 
-    def components(self):
-        return utils.identify_components(self._adjacency)
-
     def divide(self):
-        graphs = {}
-        for idx, (adjacency_list, vertices) in utils.disjunct_components(self._adjacency, self._vertices):
-            graphs[idx] = Graph(adjacency_list=adjacency_list, vertices=vertices)
-        return graphs
+        return [Graph(adjacency_list, vertices) for adjacency_list, vertices in utils.disjunct_components(self._adjacency, self._vertices)]
 
     def defragment_indices(self, start=0):
         self._adjacency, self._vertices = utils.defragment_indices(self._adjacency, self._vertices, start=start)
 
-    def largest_component(self):
-        adjacency_list, vertices = utils.disjunct_components(self._adjacency, self._vertices)[0]
+    def largest_component(self, defragment=True):
+        adjacency_list, vertices, comp_size = {}, {}, 0
+        for next_adjacency_list, next_vertices in utils.disjunct_components(self._adjacency, self._vertices):
+            if comp_size < (next_comp_size:=len(next_adjacency_list)):
+                adjacency_list, vertices, comp_size = next_adjacency_list, next_vertices, next_comp_size
+        if defragment:
+            adjacency_list, vertices = utils.defragment_indices(adjacency_list, vertices)
         return Graph(adjacency_list=adjacency_list, vertices=vertices)
 
     def greedy_routing_score(self, normalized=False):
