@@ -213,13 +213,11 @@ def popularity_similarity_optimisation_model(N, m, beta=0.5, T=0.5, representati
         cutoff = initial_radial_coordinate - 2 * np.log( 2 * T / np.sin( T * np.pi ) * ( 1 - np.exp( - (1-beta) / 2 * initial_radial_coordinate ) ) / m / (1-beta) )
 
     G = empty_graph()
-    #final_radial_coordinate = beta * initial_radial_coordinate + (1-beta) * initial_radial_coordinate[-1]
     final_radial_coordinate = initial_radial_coordinate.copy()
     G.representation = representation
     if representation == 'poincare':
         final_radial_coordinate = np.tanh( final_radial_coordinate / 2 ) ** 2
     for i, (r, phi) in enumerate(zip(final_radial_coordinate, angular_coordinate)):
-        #G.add_vertex(i, coord=r*np.exp(1j*phi))
         G.add_vertex(i, r=r, phi=phi)
 
     for i in range(N):

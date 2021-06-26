@@ -59,7 +59,8 @@ def defragment_indices(adjacency_list, vertices, start=0):
     if list(adjacency_list) == list(range(len(adjacency_list))):
         return adjacency_list, vertices
     relabel = dict(ienumerate(adjacency_list, start=start))
-    new_adjcency_list = {relabel[vertex]:{relabel[neighbour]:attributes for neighbour, attributes in adjacency_list[vertex].items()} for vertex in adjacency_list}
+
+    new_adjcency_list = {relabel[vertex]:{relabel[neighbour]:attributes for neighbour, attributes in neighbourhood.items()} for vertex, neighbourhood in adjacency_list.items()}
     new_vertices = {relabel[vertex]:attributes for vertex, attributes in vertices.items()}
     return new_adjcency_list, new_vertices
 

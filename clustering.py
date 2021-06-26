@@ -4,23 +4,6 @@ from common import disjoint_set
 import random
 import queue
 
-def select_new_label(neighbour_labels, current_label):
-    maximal_label, maximal_occurence = None, 0
-    for label, occurence in neighbour_labels.items():
-        if maximal_occurence < occurence:
-            maximal_label, maximal_occurence = label, occurence
-        elif maximal_occurence == occurence:
-            if isinstance(maximal_label, list):
-                maximal_label.append(label)
-            elif isinstance(maximal_label, int):
-                maximal_label = [maximal_label, label]
-    if isinstance(maximal_label, int):
-        return maximal_label
-    elif isinstance(maximal_label, list):
-        if current_label in maximal_label:
-            return current_label
-        return random.choice(maximal_label)
-
 def asynchronous_label_propagation(adjacency_list):
     label = {vertex:vertex for vertex in adjacency_list}
     majority = {vertex:math.ceil((len(neighourhood)+1)/2) for vertex, neighourhood in adjacency_list.items()}
@@ -49,12 +32,8 @@ def asynchronous_label_propagation(adjacency_list):
             label[vertex] = maximal_label
             return old_label != maximal_label
         elif isinstance(maximal_label, list):
-            if label[vertex] in maximal_label:
-                return False
-            else:
-                new_label = random.choice(maximal_label)
-                label[vertex] = new_label
-                return new_label != old_label
+            label[vertex] = random.choice(maximal_label)
+            return old_label not in maximal_label
              
     running = True
     while running:
@@ -62,16 +41,25 @@ def asynchronous_label_propagation(adjacency_list):
         for vertex in vertex_order:
             running = update_label(vertex)
             
-    new_label, label_counter, vertex_queue = {}, 0, queue.Queue()
-    for root, old_lab in label.items():
+    new_label, label_counter = {}, 0
+
+    def recursive_depth_first_search(vertex):
+        new_label[vertex] = label_counter
+        for neighbour in adjacency_list[vertex]:
+            if label[neighbour] == old_label and neighbour not in new_label:
+                recursive_depth_first_search(neighbour)
+    
+    for root, old_label in label.items():
         if root not in new_label:
-            vertex_queue.put(root)
-            new_label[root] = label_counter
-            while not vertex_queue.empty():
-                vertex = vertex_queue.get()
-                for neighbour in adjacency_list[vertex]:
-                    if label[neighbour] == old_lab and neighbour not in new_label:
-                        vertex_queue.put(neighbour)
-                        new_label[neighbour] = label_counter           
+            recursive_depth_first_search(root)
             label_counter += 1
+
     return new_label
+
+def infomap(adjacency_list):
+    label = {vertex:vertex for vertex in adjacency_list}
+
+    def core_algorithm():
+        pass
+
+    return label

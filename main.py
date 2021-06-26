@@ -17,9 +17,8 @@ import math
 import time
 
 def main():
-    G = models.PSO(1000,2,T=0.5)
+    G = models.PSO(200,3,T=0.5)
     G = G.largest_component()
-
     return G
 
 if __name__ == "__main__":
